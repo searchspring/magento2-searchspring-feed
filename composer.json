@@ -1,0 +1,22 @@
+{
+    "name": "searchspring/module-feed",
+    "description": "Module to generate a SearchSpring CSV Feed",
+    "type": "magento2-module",
+    "license": "GPL-3.0",
+    "authors": [
+        {
+            "email": "james@searchspring.com",
+            "name": "James Bathgate"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {},
+    "autoload": {
+        "files": [
+            "registration.php"
+        ],
+        "psr-4": {
+            "Searchspring\\Feed\\": ""
+        }
+    }
+}
