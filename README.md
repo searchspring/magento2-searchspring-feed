@@ -1,5 +1,5 @@
 This Magento 2 module is used to generate a Magento 2 feed for use in a
-SearchSpring integration
+[SearchSpring](http://www.searchspring.com) integration.
 
 # Installation
 
