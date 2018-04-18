@@ -1,5 +1,15 @@
 <?php
 
+/**
+ * Helper to fetch all data and write feed
+ * Copyright (C) 2017  SearchSpring
+ *
+ * This file is part of SearchSpring/Feed.
+ *
+ * For the full copyright and license information, please view the LICENSE.txt
+ * file that was distributed with this source code.
+ */
+
 namespace SearchSpring\Feed\Helper;
 
 use \Magento\Framework\AppInterface as AppInterface;
