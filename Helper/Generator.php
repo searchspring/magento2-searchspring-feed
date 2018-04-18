@@ -1,6 +1,6 @@
 <?php
 
-namespace Searchspring\Feed\Helper;
+namespace SearchSpring\Feed\Helper;
 
 use \Magento\Framework\AppInterface as AppInterface;
 use \Magento\Framework\App\Http as Http;
