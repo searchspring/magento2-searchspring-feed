@@ -75,13 +75,14 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
     protected $hierarchySeparator = '/';
     protected $multiValuedSeparator = '|';
-
-    protected $filename = '';
-    protected $feedPath;
+    protected $includeUrlHierarchy = false;
 
     protected $includeOutOfStock;
 
     protected $ignoreFields;
+
+    protected $filename = '';
+    protected $feedPath;
 
     protected $tmpFile;
     protected $tmpFilename;
@@ -138,6 +139,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
         $this->hierarchySeparator = $this->request->getParam('hierarchySeparator', '/');
         $this->multiValuedSeparator = $this->request->getParam('multiValuedSeparator', '|');
+        $this->includeUrlHierarchy = $this->request->getParam('includeUrlHierarchy', 0);
 
         $this->includeOutOfStock = $this->request->getParam('includeOutOfStock', 0);
 
@@ -333,6 +335,9 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $categoryNames = array();
         $categoryHierarchy = array();
 
+        if($this->includeUrlHierarchy) {
+            $urlHierarchy = array();
+        }
 
         foreach($categoryIds as $categoryId) {
             $category = $this->loadCategory($categoryId);
@@ -340,19 +345,27 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             if(!$category['is_active']) {
                 continue;
             }
-
-            // TODO Ignore Root Level?
-
             $categoryNames[] = $category['name'];
-            $categoryHierarchy[] = $category['hierarchy'];
-        }
+            foreach($category['hierarchy'] as $hierarchy) {
+                $categoryHierarchy[] = $hierarchy;
+            }
 
+            if($this->includeUrlHierarchy) {
+                foreach($category['url_hierarchy'] as $url) {
+                    $urlHierarchy[] = $url;
+                }
+            }
+        }
         $this->setRecordValue('categories', $categoryNames);
         $this->setRecordValue('category_ids', $categoryIds);
-        $this->setRecordValue('category_hierarchy', $categoryHierarchy);
+        $this->setRecordValue('category_hierarchy', array_unique($categoryHierarchy));
+
+        if($this->includeUrlHierarchy) {
+            $this->setRecordValue('url_hierarchy', array_unique($urlHierarchy));
+        }
     }
 
-    protected function loadCategory($categoryId) {
+    protected function loadCategory($categoryId, $skipLevels = false) {
         // TODO Ignore root categories? ex. Root Catalog
         // TODO Use a Magento 2 cache instead of a variable that is cleared on page 1.
         if(!isset($this->categoryCache[$categoryId])) {
@@ -360,26 +373,56 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             $categoryName = $category->getName();
             $categoryPath = $category->getPath();
 
-            $levels = explode('/', $categoryPath);
             $categoryHierarchy = array();
-            foreach($levels as $level) {
-                if($level == $categoryId) {
-                    $categoryHierarchy[] = $categoryName;
-                } else {
-                    $levelCategory = $this->loadCategory($level);
-                    $categoryHierarchy[] = $levelCategory['name'];
+
+            if($this->includeUrlHierarchy) {
+                $categoryUrl = $category->getUrl();
+                $urlHierarchy = array();
+            }
+
+            if(!$skipLevels) {
+                $levels = explode('/', $categoryPath);
+                $currentHierarchy = array();
+                foreach($levels as $level) {
+                    if($level == $categoryId) {
+                        $currentCategoryName = $categoryName;
+
+                        if($this->includeUrlHierarchy) {
+                            $currentCategoryUrl = $categoryUrl;
+                        }
+                    } else {
+                        $levelCategory = $this->loadCategory($level, true);
+                        $currentCategoryName = $levelCategory['name'];
+
+                        if($this->includeUrlHierarchy) {
+                            $currentCategoryUrl = $levelCategory['url'];
+                        }
+                    }
+                    $currentHierarchy[] = $currentCategoryName;
+                    $hierarchy = implode($this->hierarchySeparator, $currentHierarchy);
+                    $categoryHierarchy[] = $hierarchy;
+
+                    if($this->includeUrlHierarchy) {
+                        $urlHierarchy[] = $hierarchy . '[' . $currentCategoryUrl . ']';
+                    }
                 }
             }
 
-            $this->categoryCache[$categoryId] = array(
+            $catCache = array(
                 'name' => $categoryName,
-                'hierarchy' => implode($this->hierarchySeparator, $categoryHierarchy),
+                'hierarchy' => $categoryHierarchy,
                 'is_active' => $category->getIsActive()
             );
+
+            if($this->includeUrlHierarchy) {
+                $catCache['url'] = $categoryUrl;
+                $catCache['url_hierarchy'] = $urlHierarchy;
+            }
+
+            $this->categoryCache[$categoryId] = $catCache;
         }
 
         return $this->categoryCache[$categoryId];
-
     }
 
     protected function addRatingsToRecord($product) {
