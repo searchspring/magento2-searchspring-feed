@@ -452,6 +452,10 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             'rating',
             'rating_count'
         );
+        
+        if($this->includeUrlHierarchy) {
+            $this->fields[] = 'url_hierarchy';
+        }
 
         $attributes = $this->attributeFactory->getCollection();
         $attributes->addFieldToFilter('entity_type_id', $this->productEntityTypeId);
