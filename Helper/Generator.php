@@ -516,7 +516,12 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         foreach($this->fields as $field) {
             if(isset($this->productRecord[$field])) {
                 $value = $this->productRecord[$field];
-                $row[] = implode($this->multiValuedSeparator, array_unique($value));
+                // If value is an array of arrays or objects then json encode value
+                if(is_array(current($value)) || is_object(current($value))) {
+                    $row[]  = json_encode($value);
+                } else {
+                    $row[] = implode($this->multiValuedSeparator, array_unique($value));
+                }
             } else {
                 $row[] = '';
             }
