@@ -182,9 +182,9 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             $this->addStockInfoToRecord($product);
             $this->addCategoriesToRecord($product);
             $this->addRatingsToRecord($product);
+            $this->addPricesToRecord($product);
 
             $this->setRecordValue('saleable', $product->isSaleable());
-            $this->setRecordValue('final_price', $product->getFinalPrice());
             $this->setRecordValue('url', $product->getProductUrl());
 
             $this->writeRecord();
@@ -433,6 +433,11 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         }
     }
 
+    protected function addPricesToRecord($product) {
+        $price = $product->getPriceInfo()->getPrice('final_price')->getMinimalPrice()->getValue();
+        $this->setRecordValue('final_price', $price);
+    }
+
     protected function getFields() {
         // TODO Cache this in a magento cache instead of building it each time. Clear on page 1.
         $this->fields = array(
@@ -452,7 +457,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             'rating',
             'rating_count'
         );
-        
+
         if($this->includeUrlHierarchy) {
             $this->fields[] = 'url_hierarchy';
         }
