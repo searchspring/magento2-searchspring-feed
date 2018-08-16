@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Helper to fetch all data and write feed
  * Copyright (C) 2017  SearchSpring
@@ -77,6 +76,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     protected $multiValuedSeparator = '|';
     protected $includeUrlHierarchy = false;
 
+    protected $includeChildPrices = false;
+
     protected $includeOutOfStock;
 
     protected $ignoreFields;
@@ -140,6 +141,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->hierarchySeparator = $this->request->getParam('hierarchySeparator', '/');
         $this->multiValuedSeparator = $this->request->getParam('multiValuedSeparator', '|');
         $this->includeUrlHierarchy = $this->request->getParam('includeUrlHierarchy', 0);
+
+        $this->includeChildPrices = $this->request->getParam('includeChildPrices', 0);        
 
         $this->includeOutOfStock = $this->request->getParam('includeOutOfStock', 0);
 
@@ -283,6 +286,11 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
                 $this->setRecordValue('child_sku', $child->getSku());
                 $this->setRecordValue('child_name', $child->getName());
+
+                if($this->includeChildPrices) {
+                    $price = $child->getPriceInfo()->getPrice('final_price')->getMinimalPrice()->getValue();
+                    $this->setRecordValue('child_final_price', $price);
+                }
             }
         }
     }
@@ -460,6 +468,10 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
         if($this->includeUrlHierarchy) {
             $this->fields[] = 'url_hierarchy';
+        }
+
+        if($this->includeChildPrices) {
+            $this->fields[] = 'child_final_price';
         }
 
         $attributes = $this->attributeFactory->getCollection();
