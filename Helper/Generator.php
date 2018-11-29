@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Helper to fetch all data and write feed
  * Copyright (C) 2017  SearchSpring
@@ -81,6 +80,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     protected $includeOutOfStock = false;
 
     protected $includeJSONConfig = false;
+    protected $includeChildPrices = false;
 
     protected $ignoreFields;
 
@@ -147,6 +147,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->multiValuedSeparator = $this->request->getParam('multiValuedSeparator', '|');
         $this->includeUrlHierarchy = $this->request->getParam('includeUrlHierarchy', 0);
 
+        $this->includeChildPrices = $this->request->getParam('includeChildPrices', 0);        
+
         $this->includeOutOfStock = $this->request->getParam('includeOutOfStock', 0);
 
         $this->includeJSONConfig = $this->request->getParam('includeJSONConfig', 0);
@@ -190,13 +192,13 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             $this->addStockInfoToRecord($product);
             $this->addCategoriesToRecord($product);
             $this->addRatingsToRecord($product);
+            $this->addPricesToRecord($product);
 
             if($this->includeJSONConfig) {
                 $this->addJSONConfig($product);
             }
 
             $this->setRecordValue('saleable', $product->isSaleable());
-            $this->setRecordValue('final_price', $product->getFinalPrice());
             $this->setRecordValue('url', $product->getProductUrl());
 
             $this->writeRecord();
@@ -295,6 +297,11 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
                 $this->setRecordValue('child_sku', $child->getSku());
                 $this->setRecordValue('child_name', $child->getName());
+
+                if($this->includeChildPrices) {
+                    $price = $child->getPriceInfo()->getPrice('final_price')->getMinimalPrice()->getValue();
+                    $this->setRecordValue('child_final_price', $price);
+                }
             }
         }
     }
@@ -450,6 +457,10 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             $block = $this->layoutInterface->createBlock("\Magento\ConfigurableProduct\Block\Product\View\Type\Configurable")->setData('product', $product);
             $this->setRecordValue('json_config', $block->getJsonConfig());
         }
+
+    protected function addPricesToRecord($product) {
+        $price = $product->getPriceInfo()->getPrice('final_price')->getMinimalPrice()->getValue();
+        $this->setRecordValue('final_price', $price);
     }
 
     protected function getFields() {
@@ -471,6 +482,14 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             'rating',
             'rating_count'
         );
+
+        if($this->includeUrlHierarchy) {
+            $this->fields[] = 'url_hierarchy';
+        }
+
+        if($this->includeChildPrices) {
+            $this->fields[] = 'child_final_price';
+        }
 
         $attributes = $this->attributeFactory->getCollection();
         $attributes->addFieldToFilter('entity_type_id', $this->productEntityTypeId);
@@ -526,7 +545,12 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         foreach($this->fields as $field) {
             if(isset($this->productRecord[$field])) {
                 $value = $this->productRecord[$field];
-                $row[] = implode($this->multiValuedSeparator, array_unique($value));
+                // If value is an array of arrays or objects then json encode value
+                if(is_array(current($value)) || is_object(current($value))) {
+                    $row[]  = json_encode($value);
+                } else {
+                    $row[] = implode($this->multiValuedSeparator, array_unique($value));
+                }
             } else {
                 $row[] = '';
             }
