@@ -31,14 +31,14 @@ use \Magento\CatalogInventory\Helper\Stock as StockFilter;
 
 use \Magento\Framework\App\Filesystem\DirectoryList as DirectoryList;
 
-use \Magento\Eav\Model\Config as EavConfig;
+use \Magento\Framework\View\LayoutInterface as LayoutInterface;
 
+use \Magento\Eav\Model\Config as EavConfig;
 
 use \Magento\Store\Model\StoreManagerInterface as StoreManagerInterface;
 
 use \Magento\Review\Model\RatingFactory as RatingFactory;
 use \Magento\ConfigurableProduct\Model\Product\Type\Configurable as Configurable;
-
 
 class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
@@ -61,6 +61,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     protected $rating;
     protected $stockFilter;
     protected $stockRegistryInterface;
+    protected $layoutInterface;
 
     protected $storeManager;
 
@@ -77,7 +78,9 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     protected $multiValuedSeparator = '|';
     protected $includeUrlHierarchy = false;
 
-    protected $includeOutOfStock;
+    protected $includeOutOfStock = false;
+
+    protected $includeJSONConfig = false;
 
     protected $ignoreFields;
 
@@ -101,6 +104,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         RatingFactory $ratingFactory,
         StockFilter $stockFilter,
         StockRegistryInterface $stockRegistryInterface,
+        LayoutInterface $layoutInterface,
         StoreManagerInterface $storeManager,
         DirectoryList $directoryList,
         EavConfig $eavConfig
@@ -119,6 +123,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->rating = $ratingFactory->create();
         $this->stockFilter = $stockFilter;
         $this->stockRegistryInterface = $stockRegistryInterface;
+        $this->layoutInterface = $layoutInterface;
+
         $this->storeManager = $storeManager;
 
         $this->productEntityTypeId = $eavConfig->getEntityType(\Magento\Catalog\Model\Product::ENTITY)->getEntityTypeId();
@@ -142,6 +148,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->includeUrlHierarchy = $this->request->getParam('includeUrlHierarchy', 0);
 
         $this->includeOutOfStock = $this->request->getParam('includeOutOfStock', 0);
+
+        $this->includeJSONConfig = $this->request->getParam('includeJSONConfig', 0);
 
         $this->ignoreFields = $this->request->getParam('ignoreFields', array());
 
@@ -183,6 +191,10 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             $this->addCategoriesToRecord($product);
             $this->addRatingsToRecord($product);
 
+            if($this->includeJSONConfig) {
+                $this->addJSONConfig($product);
+            }
+
             $this->setRecordValue('saleable', $product->isSaleable());
             $this->setRecordValue('final_price', $product->getFinalPrice());
             $this->setRecordValue('url', $product->getProductUrl());
@@ -215,7 +227,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $collection = $this->productCollectionFactory->create()
             ->addAttributeToSelect('*')
             // TODO COMMENT, FOR TESTING ONLY
-            // ->addAttributeToFilter('entity_id', array('eq' => 2))
+            // ->addAttributeToFilter('entity_id', array('eq' => 67))
             ->setVisibility($this->productVisibility->getVisibleInSiteIds())
             ->addAttributeToFilter(
                 'status', array('eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED)
@@ -430,6 +442,13 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         if($rating && $rating->getCount() > 0) {
             $this->setRecordValue('rating', 5 * ($rating->getSum() / $rating->getCount()/100));
             $this->setRecordValue('rating_count', $rating->getCount());
+        }
+    }
+
+    protected function addJSONConfig($product) {
+        if(Configurable::TYPE_CODE === $product->getTypeId()) {
+            $block = $this->layoutInterface->createBlock("\Magento\ConfigurableProduct\Block\Product\View\Type\Configurable")->setData('product', $product);
+            $this->setRecordValue('json_config', $block->getJsonConfig());
         }
     }
 
