@@ -81,6 +81,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
     protected $includeJSONConfig = false;
     protected $includeChildPrices = false;
+    protected $includeTierPricing = false;
+
 
     protected $ignoreFields;
 
@@ -147,11 +149,11 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->multiValuedSeparator = $this->request->getParam('multiValuedSeparator', '|');
         $this->includeUrlHierarchy = $this->request->getParam('includeUrlHierarchy', 0);
 
-        $this->includeChildPrices = $this->request->getParam('includeChildPrices', 0);        
+        $this->includeJSONConfig = $this->request->getParam('includeJSONConfig', 0);
+        $this->includeChildPrices = $this->request->getParam('includeChildPrices', 0);
+        $this->includeTierPricing = $this->request->getParam('includeTierPricing', 0);
 
         $this->includeOutOfStock = $this->request->getParam('includeOutOfStock', 0);
-
-        $this->includeJSONConfig = $this->request->getParam('includeJSONConfig', 0);
 
         $this->ignoreFields = $this->request->getParam('ignoreFields', array());
 
@@ -226,10 +228,11 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
 
     protected function getProductCollection() {
+
         $collection = $this->productCollectionFactory->create()
             ->addAttributeToSelect('*')
             // TODO COMMENT, FOR TESTING ONLY
-            // ->addAttributeToFilter('entity_id', array('eq' => 67))
+            // ->addAttributeToFilter('entity_id', array('eq' => 1))
             ->setVisibility($this->productVisibility->getVisibleInSiteIds())
             ->addAttributeToFilter(
                 'status', array('eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED)
@@ -457,10 +460,17 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             $block = $this->layoutInterface->createBlock("\Magento\ConfigurableProduct\Block\Product\View\Type\Configurable")->setData('product', $product);
             $this->setRecordValue('json_config', $block->getJsonConfig());
         }
+    }
 
     protected function addPricesToRecord($product) {
         $price = $product->getPriceInfo()->getPrice('final_price')->getMinimalPrice()->getValue();
         $this->setRecordValue('final_price', $price);
+
+        if($this->includeTierPricing) {
+            $tierPrice = $product->getTierPrice();
+            $this->setRecordValue('tier_pricing', json_encode($tierPrice));
+
+        }
     }
 
     protected function getFields() {
@@ -489,6 +499,14 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
         if($this->includeChildPrices) {
             $this->fields[] = 'child_final_price';
+        }
+
+        if($this->includeJSONConfig) {
+            $this->fields[] = 'json_config';
+        }
+
+        if($this->includeTierPricing) {
+            $this->fields[] = 'tier_pricing';
         }
 
         $attributes = $this->attributeFactory->getCollection();
