@@ -573,7 +573,22 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                 $row[] = '';
             }
         }
-        fputcsv($this->tmpFile, $row);
+
+        // Start custom CSV write to handle escaped JSON
+        $delimiter = ",";
+        $delimiter_esc = preg_quote($delimiter, '/');
+        $enclosure = '"';
+        $enclosure_esc = preg_quote($enclosure, '/');
+
+        $output = array();
+        foreach ($row as $field) {
+            $output[] = preg_match("/(?:${delimiter_esc}|${enclosure_esc}|\s)/", $field) ? (
+                $enclosure . str_replace($enclosure, $enclosure . $enclosure, $field) . $enclosure
+            ) : $field;
+        }
+
+        fwrite($this->tmpFile, join($delimiter, $output) . "\n");
+        // End custom CSV write
     }
 }
 
