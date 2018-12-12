@@ -83,6 +83,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     protected $includeChildPrices = false;
     protected $includeTierPricing = false;
 
+    // Extra image types to include, by default we only include product_thumbnail_image
+    protected $imageTypes = array();
 
     protected $ignoreFields;
 
@@ -153,6 +155,12 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->includeChildPrices = $this->request->getParam('includeChildPrices', 0);
         $this->includeTierPricing = $this->request->getParam('includeTierPricing', 0);
 
+        $this->imageTypes = $this->request->getParam('imageTypes', array());
+
+        if(!is_array($this->imageTypes)) {
+          throw new \Exception('Image types must be an array. Example: imageTypes[]=product_small_image');
+        }
+
         $this->includeOutOfStock = $this->request->getParam('includeOutOfStock', 0);
 
         $this->ignoreFields = $this->request->getParam('ignoreFields', array());
@@ -190,7 +198,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             $this->addProductAttributesToRecord($product);
             $this->addChildAttributesToRecord($product);
             $this->addOptionsToRecord($product);
-            $this->addThumbnailToRecord($product);
+            $this->addImagesToRecord($product);
             $this->addStockInfoToRecord($product);
             $this->addCategoriesToRecord($product);
             $this->addRatingsToRecord($product);
@@ -324,8 +332,11 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         }
     }
 
-    protected function addThumbnailToRecord($product) {
+    protected function addImagesToRecord($product) {
         $this->setRecordValue('cached_thumbnail', $this->getThumbnail($product));
+        foreach($this->imageTypes as $type) {
+            $this->setRecordValue('cached_'.$type, $this->getThumbnail($product, $type));
+        }
     }
 
     protected function getThumbnail($product, $type = 'product_thumbnail_image') {
@@ -507,6 +518,10 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
         if($this->includeTierPricing) {
             $this->fields[] = 'tier_pricing';
+        }
+
+        foreach($this->imageTypes as $type) {
+            $this->fields[] = 'cached_'.$type;
         }
 
         $attributes = $this->attributeFactory->getCollection();
