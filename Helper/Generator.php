@@ -18,6 +18,7 @@ use \Magento\Framework\App\Request\Http as RequestHttp;
 use \Magento\Framework\App\Response\Http as ResponseHttp;
 use \Magento\Framework\App\State as State;
 
+use \Magento\Catalog\Api\ProductRepositoryInterface as ProductRepositoryInterface;
 use \Magento\Catalog\Model\Product\Visibility as ProductVisibility;
 use \Magento\CatalogInventory\Model\Stock\StockItemRepository as StockItemRepository;
 use \Magento\Catalog\Helper\Image as ImageHelper;
@@ -54,6 +55,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
     protected $productCollectionFactory;
     protected $productOptionFactory;
+    protected $productRepositoryInterface;
     protected $productVisibility;
     protected $stockItemRepository;
     protected $productImageHelper;
@@ -63,6 +65,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     protected $stockFilter;
     protected $stockRegistryInterface;
     protected $layoutInterface;
+    protected $eavConfig;
 
     protected $storeManager;
 
@@ -103,6 +106,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         ProductVisibility $productVisibility,
         ProductOptionFactory $productOptionFactory,
         ProductCollectionFactory $productCollectionFactory,
+        ProductRepositoryInterface $productRepository,
         StockItemRepository $stockItemRepository,
         ImageHelper $productImageHelper,
         CategoryRepository $categoryRepository,
@@ -121,6 +125,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
         $this->productCollectionFactory = $productCollectionFactory;
         $this->productOptionFactory = $productOptionFactory;
+        $this->productRepository = $productRepository;
         $this->productVisibility = $productVisibility;
         $this->stockItemRepository = $stockItemRepository;
         $this->productImageHelper = $productImageHelper;
@@ -134,6 +139,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->storeManager = $storeManager;
 
         $this->productEntityTypeId = $eavConfig->getEntityType(\Magento\Catalog\Model\Product::ENTITY)->getEntityTypeId();
+        $this->eavConfig = $eavConfig;
 
         $this->storeId = $this->request->getParam('store', 'default');
         $this->storeManager->setCurrentStore($this->storeId);
@@ -285,24 +291,66 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     }
 
     protected function addChildAttributesToRecord($product) {
+        $otherChildAttributes = array(
+            "mb_adapter_option",
+            "mb_blade_bolt_pattern",
+            "mb_blade_feature",
+            "mb_break_range_required",
+            "mb_break_away_type",
+            "mb_digitrak_locater_model",
+            "mb_duct_size",
+            "mb_fastream_cutter_block",
+            "mb_oem",
+            "mb_pilot_cutting_diameter",
+            "mb_pullback_type",
+            "mb_pulling_sling_cable",
+            "mb_pulling_sling_legs",
+            "mb_quick_disconnect_type",
+            "mb_reamer_cutting_size",
+            "mb_reamer_shaft_size",
+            "mb_rig_model",
+            "mb_soil_type_best",
+            "mb_swivel_capacities",
+            "mb_swivel_connection",
+            "mb_swivel_thread",
+            "mb_thread_connection_type",
+            "mb_transmitter_diameter",
+            "mb_transmitter_front_connect",
+            "mb_transmitter_housing_type",
+            "mb_transmitter_type"
+        );
+
         if(Configurable::TYPE_CODE === $product->getTypeId()) {
             $childAttributes = array();
+            $childAttributeIds = array();
+
             $attributes = $product->getTypeInstance(true)->getConfigurableAttributes($product);
             foreach($attributes as $attribute) {
                 $productAttribute = $attribute->getProductAttribute();
                 if($productAttribute) {
                     $childAttributes[] = $productAttribute;
+                    $childAttributeIds[] = $productAttribute->getId();
+                }
+            }
+
+            foreach($otherChildAttributes as $attribute) {
+                $productAttribute = $this->eavConfig->getAttribute("catalog_product", $attribute);
+                if($productAttribute) {
+                    $childAttributes[] = $productAttribute;
+                    $childAttributeIds[] = $productAttribute->getId();
                 }
             }
 
             $children = $product->getTypeInstance()->getUsedProducts($product);
             foreach($children as $child) {
+                $fullChild = $this->productRepository->getById($child->getId());
                 foreach($childAttributes as $childAttribute) {
                     $code = $childAttribute->getAttributeCode();
-                    $value = $this->getProductAttribute($child, $childAttribute);
-                    $this->setRecordValue($code, $value);
+                    $value = $this->getProductAttribute($fullChild, $childAttribute);
+                    if($value !== false) {
+                        $this->setRecordValue($code, $value);
+                    }
                 }
-
                 // NOTE We're not using child_qty anymore as that should be
                 // taken care of by saleable. If there is a need adding it here
                 // should be easy.
