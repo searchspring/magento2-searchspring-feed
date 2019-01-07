@@ -501,7 +501,9 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             'url',
             'final_price',
             'rating',
-            'rating_count'
+            'rating_count',
+            'child_sku',
+            'child_name'
         );
 
         if($this->includeUrlHierarchy) {
