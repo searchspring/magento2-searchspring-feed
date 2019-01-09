@@ -322,6 +322,11 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             foreach($children as $child) {
                 $this->setRecordValue('child_sku', $child->getSku());
                 $this->setRecordValue('child_name', $child->getName());
+
+                if($this->includeChildPrices) {
+                    $price = $child->getPriceInfo()->getPrice('final_price')->getMinimalPrice()->getValue();
+                    $this->setRecordValue('child_final_price', $price);
+                }
             }
         };
     }
