@@ -37,7 +37,9 @@ use \Magento\Eav\Model\Config as EavConfig;
 use \Magento\Store\Model\StoreManagerInterface as StoreManagerInterface;
 
 use \Magento\Review\Model\RatingFactory as RatingFactory;
+
 use \Magento\ConfigurableProduct\Model\Product\Type\Configurable as Configurable;
+use \Magento\GroupedProduct\Model\Product\Type\Grouped as Grouped;
 
 class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
@@ -236,7 +238,6 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
 
     protected function getProductCollection() {
-
         $collection = $this->productCollectionFactory->create()
             ->addAttributeToSelect('*')
             // TODO COMMENT, FOR TESTING ONLY
@@ -315,6 +316,14 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                 }
             }
         }
+
+        if(Grouped::TYPE_CODE === $product->getTypeId()) {
+            $children = $product->getTypeInstance()->getAssociatedProducts($product);
+            foreach($children as $child) {
+                $this->setRecordValue('child_sku', $child->getSku());
+                $this->setRecordValue('child_name', $child->getName());
+            }
+        };
     }
 
     protected function addOptionsToRecord($product) {
