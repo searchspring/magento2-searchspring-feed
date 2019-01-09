@@ -468,8 +468,11 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
     protected function addJSONConfig($product) {
         if(Configurable::TYPE_CODE === $product->getTypeId()) {
-            $block = $this->layoutInterface->createBlock("\Magento\ConfigurableProduct\Block\Product\View\Type\Configurable")->setData('product', $product);
-            $this->setRecordValue('json_config', $block->getJsonConfig());
+            $configBlock = $this->layoutInterface->createBlock("\Magento\ConfigurableProduct\Block\Product\View\Type\Configurable")->setData('product', $product);
+            $this->setRecordValue('json_config', $configBlock->getJsonConfig());
+
+            $swatchBlock = $this->layoutInterface->createBlock("\Magento\Swatches\Block\Product\Renderer\Configurable")->setData('product', $product);
+            $this->setRecordValue('swatch_json_config', $swatchBlock->getJsonSwatchConfig());
         }
     }
 
@@ -514,6 +517,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
         if($this->includeJSONConfig) {
             $this->fields[] = 'json_config';
+            $this->fields[] = 'swatch_json_config';
         }
 
         if($this->includeTierPricing) {
