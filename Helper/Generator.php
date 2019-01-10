@@ -320,10 +320,10 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             "mb_transmitter_type"
         );
 
-        if(Configurable::TYPE_CODE === $product->getTypeId()) {
-            $childAttributes = array();
-            $childAttributeIds = array();
+        $childAttributes = array();
+        $childAttributeIds = array();
 
+        if(Configurable::TYPE_CODE === $product->getTypeId()) {
             $attributes = $product->getTypeInstance(true)->getConfigurableAttributes($product);
             foreach($attributes as $attribute) {
                 $productAttribute = $attribute->getProductAttribute();
@@ -366,8 +366,25 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         }
 
         if(Grouped::TYPE_CODE === $product->getTypeId()) {
+            foreach($otherChildAttributes as $attribute) {
+                $productAttribute = $this->eavConfig->getAttribute("catalog_product", $attribute);
+                if($productAttribute) {
+                    $childAttributes[] = $productAttribute;
+                    $childAttributeIds[] = $productAttribute->getId();
+                }
+            }
+
             $children = $product->getTypeInstance()->getAssociatedProducts($product);
             foreach($children as $child) {
+                $fullChild = $this->productRepository->getById($child->getId());
+                foreach($childAttributes as $childAttribute) {
+                    $code = $childAttribute->getAttributeCode();
+                    $value = $this->getProductAttribute($fullChild, $childAttribute);
+                    if($value !== false) {
+                        $this->setRecordValue($code, $value);
+                    }
+                }
+
                 $this->setRecordValue('child_sku', $child->getSku());
                 $this->setRecordValue('child_name', $child->getName());
 
