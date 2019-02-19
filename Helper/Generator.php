@@ -79,6 +79,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     protected $multiValuedSeparator = '|';
     protected $includeUrlHierarchy = false;
 
+    protected $includeOnlyMenuCategories = false;
+
     protected $includeOutOfStock = false;
 
     protected $includeJSONConfig = false;
@@ -152,6 +154,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->hierarchySeparator = $this->request->getParam('hierarchySeparator', '/');
         $this->multiValuedSeparator = $this->request->getParam('multiValuedSeparator', '|');
         $this->includeUrlHierarchy = $this->request->getParam('includeUrlHierarchy', 0);
+
+        $this->includeOnlyMenuCategories = $this->request->getParam('includeOnlyMenuCategories', 0);
 
         $this->includeJSONConfig = $this->request->getParam('includeJSONConfig', 0);
         $this->includeChildPrices = $this->request->getParam('includeChildPrices', 0);
@@ -392,6 +396,11 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             if(!$category['is_active']) {
                 continue;
             }
+
+            if($this->includeOnlyMenuCategories && !$category['include_menu']) {
+                continue;
+            }
+
             $categoryNames[] = $category['name'];
             foreach($category['hierarchy'] as $hierarchy) {
                 $categoryHierarchy[] = $hierarchy;
@@ -403,6 +412,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                 }
             }
         }
+
         $this->setRecordValue('categories', $categoryNames);
         $this->setRecordValue('category_ids', $categoryIds);
         $this->setRecordValue('category_hierarchy', array_unique($categoryHierarchy));
@@ -458,7 +468,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             $catCache = array(
                 'name' => $categoryName,
                 'hierarchy' => $categoryHierarchy,
-                'is_active' => $category->getIsActive()
+                'is_active' => $category->getIsActive(),
+                'include_menu' => $category->getIncludeInMenu()
             );
 
             if($this->includeUrlHierarchy) {
