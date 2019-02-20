@@ -79,7 +79,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     protected $multiValuedSeparator = '|';
     protected $includeUrlHierarchy = false;
 
-    protected $includeOnlyMenuCategories = false;
+    protected $includeMenuCategories = false;
 
     protected $includeOutOfStock = false;
 
@@ -155,7 +155,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->multiValuedSeparator = $this->request->getParam('multiValuedSeparator', '|');
         $this->includeUrlHierarchy = $this->request->getParam('includeUrlHierarchy', 0);
 
-        $this->includeOnlyMenuCategories = $this->request->getParam('includeOnlyMenuCategories', 0);
+        $this->includeMenuCategories = $this->request->getParam('includeMenuCategories', 0);
 
         $this->includeJSONConfig = $this->request->getParam('includeJSONConfig', 0);
         $this->includeChildPrices = $this->request->getParam('includeChildPrices', 0);
@@ -385,6 +385,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $categoryIds = $product->getCategoryIds();
         $categoryNames = array();
         $categoryHierarchy = array();
+        $menuHierarchy = array();
 
         if($this->includeUrlHierarchy) {
             $urlHierarchy = array();
@@ -397,13 +398,15 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                 continue;
             }
 
-            if($this->includeOnlyMenuCategories && !$category['include_menu']) {
-                continue;
-            }
-
             $categoryNames[] = $category['name'];
             foreach($category['hierarchy'] as $hierarchy) {
                 $categoryHierarchy[] = $hierarchy;
+            }
+
+            if($this->includeMenuCategories && $category['include_menu']) {
+                foreach($category['hierarchy'] as $hierarchy) {
+                    $menuHierarchy[] = $hierarchy;
+                }
             }
 
             if($this->includeUrlHierarchy) {
@@ -416,6 +419,10 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->setRecordValue('categories', $categoryNames);
         $this->setRecordValue('category_ids', $categoryIds);
         $this->setRecordValue('category_hierarchy', array_unique($categoryHierarchy));
+
+        if($this->includeMenuCategories) {
+            $this->setRecordValue('menu_hierarchy', array_unique($menuHierarchy));
+        }
 
         if($this->includeUrlHierarchy) {
             $this->setRecordValue('url_hierarchy', array_unique($urlHierarchy));
@@ -533,6 +540,10 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             'child_sku',
             'child_name'
         );
+
+        if($this->includeMenuCategories) {
+            $this->fields[] = 'menu_hierarchy';
+        }
 
         if($this->includeUrlHierarchy) {
             $this->fields[] = 'url_hierarchy';
