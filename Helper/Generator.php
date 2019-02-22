@@ -339,8 +339,10 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                 // Clean up option title for a field name
                 $field = 'option_' . $this->textToFieldName($option->getTitle());
                 $values = $option->getValues();
-                foreach($values as $value) {
-                    $this->setRecordValue($field, $value->getTitle());
+                if($values) {
+                    foreach($values as $value) {
+                        $this->setRecordValue($field, $value->getTitle());
+                    }
                 }
             }
         }
