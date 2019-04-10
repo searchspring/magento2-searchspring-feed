@@ -22,6 +22,9 @@ use \Magento\Catalog\Model\Product\Visibility as ProductVisibility;
 use \Magento\CatalogInventory\Model\Stock\StockItemRepository as StockItemRepository;
 use \Magento\Catalog\Helper\Image as ImageHelper;
 use \Magento\Catalog\Model\CategoryRepository as CategoryRepository;
+
+use \Magento\Catalog\Model\ProductFactory as ProductFactory;
+use \Magento\Catalog\Model\Product\Attribute\Repository as ProductAttributeRepository;
 use \Magento\Catalog\Model\Product\OptionFactory as ProductOptionFactory;
 use \Magento\Catalog\Model\ResourceModel\Product\CollectionFactory as ProductCollectionFactory;
 use \Magento\Catalog\Model\ResourceModel\Eav\Attribute as AttributeFactory;
@@ -52,6 +55,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     protected $response;
     protected $state;
 
+    protected $productFactory;
     protected $productCollectionFactory;
     protected $productOptionFactory;
     protected $productVisibility;
@@ -85,6 +89,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     protected $includeChildPrices = false;
     protected $includeTierPricing = false;
 
+    protected $productSplitField = '';
+
     // Extra image types to include, by default we only include product_thumbnail_image
     protected $imageTypes = array();
 
@@ -101,6 +107,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         ResponseHttp $response,
         State $state,
         ProductVisibility $productVisibility,
+        ProductAttributeRepository $productAttributeRepository,
+        ProductFactory $productFactory,
         ProductOptionFactory $productOptionFactory,
         ProductCollectionFactory $productCollectionFactory,
         StockItemRepository $stockItemRepository,
@@ -119,6 +127,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->response = $response;
         $this->_state = $state;
 
+        $this->productFactory = $productFactory;
+        $this->productAttributeRepository = $productAttributeRepository;
         $this->productCollectionFactory = $productCollectionFactory;
         $this->productOptionFactory = $productOptionFactory;
         $this->productVisibility = $productVisibility;
@@ -156,6 +166,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->includeJSONConfig = $this->request->getParam('includeJSONConfig', 0);
         $this->includeChildPrices = $this->request->getParam('includeChildPrices', 0);
         $this->includeTierPricing = $this->request->getParam('includeTierPricing', 0);
+
+        $this->productSplitField = $this->request->getParam('productSplitField', '');
 
         $this->imageTypes = $this->request->getParam('imageTypes', array());
 
@@ -213,7 +225,11 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             $this->setRecordValue('saleable', $product->isSaleable());
             $this->setRecordValue('url', $product->getProductUrl());
 
-            $this->writeRecord();
+            if($this->productSplitField) {
+                $this->splitRecord($product);
+            } else {
+                $this->writeRecord();
+            }
         }
 
         // Check if we're on last page
@@ -235,13 +251,11 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         rename($this->feedPath . '/' . $this->tmpFilename, $this->feedPath . '/' . $filename);
     }
 
-
-
     protected function getProductCollection() {
         $collection = $this->productCollectionFactory->create()
             ->addAttributeToSelect('*')
             // TODO COMMENT, FOR TESTING ONLY
-            // ->addAttributeToFilter('entity_id', array('eq' => 1))
+            // ->addAttributeToFilter('entity_id', array('eq' => 211))
             ->setVisibility($this->productVisibility->getVisibleInSiteIds())
             ->addAttributeToFilter(
                 'status', array('eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED)
@@ -251,8 +265,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
         if(!$this->includeOutOfStock) {
             $this->stockFilter->addInStockFilterToCollection($collection);
+            $collection->getSelect()->where('at_inventory_in_stock.website_id = ?', $this->storeManager->getStore()->getId());
         }
-
         return $collection;
     }
 
@@ -501,6 +515,149 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         }
     }
 
+    protected function splitRecord($product) {
+        if(Configurable::TYPE_CODE === $product->getTypeId()) {
+            $parentRecord = $this->productRecord;
+            $splitAttribute = $this->productAttributeRepository->get($this->productSplitField);
+
+            $splitRecords = array();
+
+            $children = $product->getTypeInstance()->getUsedProducts($product);
+            // $children->setVisibility($this->productVisibility->getVisibleInSiteIds());
+            // $children->addAttributeToFilter(
+            //     'status', array('eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED)
+            // );
+
+
+            $splitAttributeId = $splitAttribute->getId();
+            foreach($children as $baseChild) {
+                $child = $this->productFactory->create()->load($baseChild->getId());
+                $splitValue = $this->getProductAttribute($child, $splitAttribute);
+                $splitValueId = $product->getResource()->getAttribute($this->productSplitField)->getSource()->getOptionId($splitValue);
+
+                if(!isset($splitRecords[$splitValue])) {
+
+                    $this->productRecord = $parentRecord;
+                    $this->clearChildRecord($product);
+
+                    $this->setRecordValue('entity_id', $child->getId());
+
+                    // Pre-selects swatch but doesn't change thumbnail
+                    // Known Bug Fixed in 2.3: https://github.com/magento/magento2/issues/18017
+                    $this->setRecordValue('url', $product->getProductUrl() . '#' . $splitAttributeId . '=' . $splitValueId);
+                    $this->setRecordValue('sku', $product->getSku() . '-' . $splitValue);
+
+                    $this->setRecordValue('saleable', $child->isSaleable());
+
+                    $stockItem = $this->stockRegistryInterface->getStockItem($child->getId());
+                    $this->setRecordValue('in_stock', $stockItem->getIsInStock());
+                    $this->setRecordValue('stock_qty', $stockItem->getQty());
+
+                    $this->setRecordValue($this->productSplitField, $splitValue);
+                    $this->setRecordValue('colour_group', $child->getAttributeText('colour_group'));
+
+                    $this->addImagesToRecord($child);
+
+                    $price = $child->getPriceInfo()->getPrice('final_price')->getMinimalPrice()->getValue();
+                    $this->setRecordValue('final_price', $price);
+
+
+                    $attributes = $product->getTypeInstance(true)->getConfigurableAttributes($product);
+                    foreach($attributes as $attribute) {
+                        $childAttribute = $attribute->getProductAttribute();
+                        if($childAttribute) {
+                            $code = $childAttribute->getAttributeCode();
+                            if($code != $this->productSplitField) {
+                                $value = $this->getProductAttribute($child, $childAttribute);
+                                $this->setRecordValue($code, $value);
+                            }
+                        }
+                    }
+
+                    $this->setRecordValue('child_sku', $child->getSku());
+                    $this->setRecordValue('child_name', $child->getName());
+
+                    $splitRecords[$splitValue] = $this->productRecord;
+
+                } else {
+                    $this->productRecord = $splitRecords[$splitValue];
+
+                    if($child->isSaleable()) {
+                        $this->setRecordValue('saleable', $child->isSaleable(), true);
+                    }
+
+                    $stockItem = $this->stockRegistryInterface->getStockItem($child->getId());
+                    if($stockItem->getIsInStock()) {
+                        $this->setRecordValue('in_stock', $stockItem->getIsInStock(), true);
+                    }
+
+                    $this->setRecordValue('stock_qty', $this->productRecord['stock_qty'][0] + $stockItem->getQty(), true);
+
+                    $price = $child->getPriceInfo()->getPrice('final_price')->getMinimalPrice()->getValue();
+                    if(!isset($this->productRecord['final_price']) || $price < $this->productRecord['final_price'][0]) {
+                        $this->setRecordValue('final_price', $price, true);
+                    }
+
+                    $attributes = $product->getTypeInstance(true)->getConfigurableAttributes($product);
+                    foreach($attributes as $attribute) {
+                        $childAttribute = $attribute->getProductAttribute();
+                        if($childAttribute) {
+                            $code = $childAttribute->getAttributeCode();
+                            if($code != $this->productSplitField) {
+                                $value = $this->getProductAttribute($child, $childAttribute);
+                                $this->setRecordValue($code, $value);
+                            }
+                        }
+                    }
+
+                    $this->setRecordValue('child_sku', $child->getSku());
+                    $this->setRecordValue('child_name', $child->getName());
+
+                    $splitRecords[$splitValue] = $this->productRecord;
+                }
+            }
+
+            foreach($splitRecords as $record) {
+                $this->productRecord = $record;
+                $this->writeRecord();
+            }
+        } else {
+            $this->writeRecord();
+        }
+    }
+
+    protected function clearChildRecord($product) {
+        unset($this->productRecord['entity_id']);
+        unset($this->productRecord['sku']);
+        unset($this->productRecord['url']);
+        unset($this->productRecord['saleable']);
+        unset($this->productRecord['in_stock']);
+        unset($this->productRecord['stock_qty']);
+        unset($this->productRecord['final_price']);
+        unset($this->productRecord['child_sku']);
+        unset($this->productRecord['child_name']);
+
+        unset($this->productRecord[$this->productSplitField]);
+        unset($this->productRecord['colour_group']);
+
+        unset($this->productRecord['cached_thumbnail']);
+        foreach($this->imageTypes as $type) {
+            unset($this->productRecord['cached_'.$type]);
+        }
+
+
+        $attributes = $product->getTypeInstance(true)->getConfigurableAttributes($product);
+        foreach($attributes as $attribute) {
+            $childAttribute = $attribute->getProductAttribute();
+            if($childAttribute) {
+                $code = $childAttribute->getAttributeCode();
+                if($code != $this->productSplitField) {
+                    unset($this->productRecord[$code]);
+                }
+            }
+        }
+    }
+
     protected function getFields() {
         // TODO Cache this in a magento cache instead of building it each time. Clear on page 1.
         $this->fields = array(
@@ -568,7 +725,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         return strtolower(preg_replace('/_+/', '_', preg_replace('/[^a-z0-9_]+/i', '_', trim($text))));
     }
 
-    protected function setRecordValue($field, $value) {
+    protected function setRecordValue($field, $value, $overwrite = false) {
         if(in_array($field, $this->ignoreFields)) {
             return;
         }
@@ -578,7 +735,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             return;
         }
 
-        if(!isset($this->productRecord[$field])) {
+        if(!isset($this->productRecord[$field]) || $overwrite) {
             $this->productRecord[$field] = array();
         }
 
@@ -588,6 +745,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             $this->productRecord[$field] = array_merge($this->productRecord[$field], $value);
         }
     }
+
 
     protected function writeHeader() {
         fputcsv($this->tmpFile, $this->fields);
