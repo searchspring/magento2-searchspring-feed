@@ -18,6 +18,7 @@ use \Magento\Framework\App\Request\Http as RequestHttp;
 use \Magento\Framework\App\Response\Http as ResponseHttp;
 use \Magento\Framework\App\State as State;
 
+use \Magento\Catalog\Api\ProductRepositoryInterface as ProductRepositoryInterface;
 use \Magento\Catalog\Model\Product\Visibility as ProductVisibility;
 use \Magento\CatalogInventory\Model\Stock\StockItemRepository as StockItemRepository;
 use \Magento\Catalog\Helper\Image as ImageHelper;
@@ -54,6 +55,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
     protected $productCollectionFactory;
     protected $productOptionFactory;
+    protected $productRepositoryInterface;
     protected $productVisibility;
     protected $stockItemRepository;
     protected $productImageHelper;
@@ -90,6 +92,9 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     // Extra image types to include, by default we only include product_thumbnail_image
     protected $imageTypes = array();
 
+    // Fields to load from child products of configurable/grouped products
+    protected $childFields = array();
+
     protected $ignoreFields;
 
     protected $filename = '';
@@ -105,6 +110,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         ProductVisibility $productVisibility,
         ProductOptionFactory $productOptionFactory,
         ProductCollectionFactory $productCollectionFactory,
+        ProductRepositoryInterface $productRepository,
         StockItemRepository $stockItemRepository,
         ImageHelper $productImageHelper,
         CategoryRepository $categoryRepository,
@@ -123,6 +129,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
         $this->productCollectionFactory = $productCollectionFactory;
         $this->productOptionFactory = $productOptionFactory;
+        $this->productRepository = $productRepository;
         $this->productVisibility = $productVisibility;
         $this->stockItemRepository = $stockItemRepository;
         $this->productImageHelper = $productImageHelper;
@@ -135,7 +142,9 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
         $this->storeManager = $storeManager;
 
-        $this->productEntityTypeId = $eavConfig->getEntityType(\Magento\Catalog\Model\Product::ENTITY)->getEntityTypeId();
+        $this->eavConfig = $eavConfig;
+
+        $this->productEntityTypeId = $this->eavConfig->getEntityType(\Magento\Catalog\Model\Product::ENTITY)->getEntityTypeId();
 
         $this->storeId = $this->request->getParam('store', 'default');
         $this->storeManager->setCurrentStore($this->storeId);
@@ -165,6 +174,14 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
         if(!is_array($this->imageTypes)) {
           throw new \Exception('Image types must be an array. Example: imageTypes[]=product_small_image');
+        }
+
+        // NOTE: Using this option can greatly reduce generation speed. Since
+        // requires loading full products for all child products.
+        $this->childFields = $this->request->getParam('childFields', array());
+
+        if(!is_array($this->childFields)) {
+          throw new \Exception('Child fields must be an array. Example: childFields[]=color_family');
         }
 
         $this->includeOutOfStock = $this->request->getParam('includeOutOfStock', 0);
@@ -291,6 +308,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     protected function addChildAttributesToRecord($product) {
         if(Configurable::TYPE_CODE === $product->getTypeId()) {
             $childAttributes = array();
+
             $attributes = $product->getTypeInstance(true)->getConfigurableAttributes($product);
             foreach($attributes as $attribute) {
                 $productAttribute = $attribute->getProductAttribute();
@@ -299,8 +317,20 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                 }
             }
 
+            foreach($this->childFields as $attribute) {
+                $productAttribute = $this->eavConfig->getAttribute("catalog_product", $attribute);
+                if($productAttribute) {
+                    $childAttributes[] = $productAttribute;
+                }
+            }
+
             $children = $product->getTypeInstance()->getUsedProducts($product);
             foreach($children as $child) {
+                // If we're pulling non-configurable attributes we need to load the full child product
+                if(sizeof($this->childFields) > 0) {
+                    $child = $this->productRepository->getById($child->getId());
+                }
+
                 foreach($childAttributes as $childAttribute) {
                     $code = $childAttribute->getAttributeCode();
                     $value = $this->getProductAttribute($child, $childAttribute);
@@ -310,7 +340,6 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                 // NOTE We're not using child_qty anymore as that should be
                 // taken care of by saleable. If there is a need adding it here
                 // should be easy.
-
                 $this->setRecordValue('child_sku', $child->getSku());
                 $this->setRecordValue('child_name', $child->getName());
 
@@ -322,8 +351,25 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         }
 
         if(Grouped::TYPE_CODE === $product->getTypeId()) {
+            foreach($this->childFields as $attribute) {
+                $productAttribute = $this->eavConfig->getAttribute("catalog_product", $attribute);
+                if($productAttribute) {
+                    $childAttributes[] = $productAttribute;
+                }
+            }
+
             $children = $product->getTypeInstance()->getAssociatedProducts($product);
             foreach($children as $child) {
+                // If we're pulling non-configurable attributes we need to load the full child product
+                if(sizeof($this->childFields) > 0) {
+                    $child = $this->productRepository->getById($child->getId());
+                    foreach($childAttributes as $childAttribute) {
+                        $code = $childAttribute->getAttributeCode();
+                        $value = $this->getProductAttribute($child, $childAttribute);
+                        $this->setRecordValue($code, $value);
+                    }
+                }
+
                 $this->setRecordValue('child_sku', $child->getSku());
                 $this->setRecordValue('child_name', $child->getName());
 
