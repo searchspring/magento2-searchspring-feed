@@ -135,7 +135,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->productImageHelper = $productImageHelper;
         $this->categoryRepository = $categoryRepository;
         $this->attributeFactory = $attributeFactory;
-        $this->rating = $ratingFactory->create();
+        $this->ratingFactory = $ratingFactory;
         $this->stockFilter = $stockFilter;
         $this->stockRegistryInterface = $stockRegistryInterface;
         $this->layoutInterface = $layoutInterface;
@@ -539,7 +539,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     }
 
     protected function addRatingsToRecord($product) {
-        $rating = $this->rating->getEntitySummary($product->getId(), $this->storeId);
+        $rating = $this->ratingFactory->create()->getEntitySummary($product->getId(), $this->storeId);
         if($rating && $rating->getCount() > 0) {
             $this->setRecordValue('rating', 5 * ($rating->getSum() / $rating->getCount()/100));
             $this->setRecordValue('rating_count', $rating->getCount());
