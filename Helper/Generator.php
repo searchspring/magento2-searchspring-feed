@@ -212,6 +212,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             $this->addProductAttributesToRecord($product);
             $this->addChildAttributesToRecord($product);
             $this->addOptionsToRecord($product);
+            $this->addBadgeOverlayToRecord($product);
             $this->addImagesToRecord($product);
             $this->addStockInfoToRecord($product);
             $this->addCategoriesToRecord($product);
@@ -360,11 +361,22 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         }
     }
 
+    protected function addBadgeOverlayToRecord($product) {
+        // EWAVE: Your code here, likely need to load the overlay block and just pass us the HTML
+        $overlayHtml = '';
+        $this->setRecordValue('overlay_html', $overlayHtml);
+    }
+
     protected function addImagesToRecord($product) {
         $this->setRecordValue('cached_thumbnail', $this->getThumbnail($product));
         foreach($this->imageTypes as $type) {
             $this->setRecordValue('cached_'.$type, $this->getThumbnail($product, $type));
         }
+
+        // EWAVE: Your code here
+        $alternateThumbnailUrl = '';
+        $this->setRecordValue('cached_alternate', $alternateThumbnailUrl);
+
     }
 
     protected function getThumbnail($product, $type = 'product_thumbnail_image') {
@@ -677,7 +689,9 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             'rating',
             'rating_count',
             'child_sku',
-            'child_name'
+            'child_name',
+            'overlay_html',
+            'cached_alternate'
         );
 
         if($this->includeUrlHierarchy) {
