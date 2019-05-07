@@ -256,7 +256,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $collection = $this->productCollectionFactory->create()
             ->addAttributeToSelect('*')
             // TODO COMMENT, FOR TESTING ONLY
-            // ->addAttributeToFilter('entity_id', array('eq' => 211))
+            // ->addAttributeToFilter('entity_id', array('eq' => 19309))
             ->setVisibility($this->productVisibility->getVisibleInSiteIds())
             ->addAttributeToFilter(
                 'status', array('eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED)
@@ -534,16 +534,14 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
             $splitRecords = array();
 
-            $children = $product->getTypeInstance()->getUsedProducts($product);
-            // $children->setVisibility($this->productVisibility->getVisibleInSiteIds());
-            // $children->addAttributeToFilter(
-            //     'status', array('eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED)
-            // );
-
+            $children = $product->getTypeInstance()->getUsedProductCollection($product);
+            $children->addAttributeToSelect('*');
+            $children->addAttributeToFilter(
+                'status', array('eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED)
+            );
 
             $splitAttributeId = $splitAttribute->getId();
-            foreach($children as $baseChild) {
-                $child = $this->productFactory->create()->load($baseChild->getId());
+            foreach($children as $child) {
                 $splitValue = $this->getProductAttribute($child, $splitAttribute);
                 $splitValueId = $product->getResource()->getAttribute($this->productSplitField)->getSource()->getOptionId($splitValue);
 
