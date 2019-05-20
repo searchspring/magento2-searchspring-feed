@@ -262,7 +262,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $collection = $this->productCollectionFactory->create()
             ->addAttributeToSelect('*')
             // TODO COMMENT, FOR TESTING ONLY
-            // ->addAttributeToFilter('entity_id', array('eq' => 1))
+            // ->addAttributeToFilter('entity_id', array('eq' => 67))
             ->setVisibility($this->productVisibility->getVisibleInSiteIds())
             ->addAttributeToFilter(
                 'status', array('eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED)
@@ -324,13 +324,18 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                 }
             }
 
-            $children = $product->getTypeInstance()->getUsedProducts($product);
-            foreach($children as $child) {
-                // If we're pulling non-configurable attributes we need to load the full child product
-                if(sizeof($this->childFields) > 0) {
-                    $child = $this->productRepository->getById($child->getId());
-                }
+            $children = $product->getTypeInstance()->getUsedProductCollection($product);
 
+            // If we're pulling non-configurable attributes we need to load the full child product
+            if(sizeof($this->childFields) > 0) {
+                $children->addAttributeToSelect('*');
+            }
+
+            $children->addAttributeToFilter(
+                'status', array('eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED)
+            );
+
+            foreach($children as $child) {
                 foreach($childAttributes as $childAttribute) {
                     $code = $childAttribute->getAttributeCode();
                     $value = $this->getProductAttribute($child, $childAttribute);
