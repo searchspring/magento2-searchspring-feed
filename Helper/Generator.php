@@ -17,6 +17,7 @@ use \Magento\Framework\App\Http as Http;
 use \Magento\Framework\App\Request\Http as RequestHttp;
 use \Magento\Framework\App\Response\Http as ResponseHttp;
 use \Magento\Framework\App\State as State;
+use \Magento\Framework\View\Config as ViewConfig;
 
 use \Magento\Catalog\Api\ProductRepositoryInterface as ProductRepositoryInterface;
 use \Magento\Catalog\Model\Product\Visibility as ProductVisibility;
@@ -102,6 +103,9 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
     protected $ignoreFields;
 
+    // Show M2 install info instead of generating feed
+    protected $showInfo = false;
+
     protected $filename = '';
     protected $feedPath;
 
@@ -127,7 +131,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         StoreManagerInterface $storeManager,
         GalleryReadHandler $galleryReadHandler,
         DirectoryList $directoryList,
-        EavConfig $eavConfig
+        EavConfig $eavConfig,
+        ViewConfig $viewConfig
     ) {
         $this->request = $request;
         $this->response = $response;
@@ -150,6 +155,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->storeManager = $storeManager;
 
         $this->eavConfig = $eavConfig;
+        $this->viewConfig = $viewConfig;
 
         $this->productEntityTypeId = $this->eavConfig->getEntityType(\Magento\Catalog\Model\Product::ENTITY)->getEntityTypeId();
 
@@ -201,6 +207,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
           throw new \Exception('Ignore fields must be an array. Example: ignoreFields[]=description');
         }
 
+        $this->showInfo = $this->request->getParam('showInfo', 0);
+
         $filename = $this->request->getParam('filename', '');
 
         $this->feedPath = $this->request->getParam('path', $directoryList->getPath('media') . '/searchspring');
@@ -216,6 +224,11 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
     public function generate()
     {
+        if($this->showInfo) {
+            $this->displayInfo();
+            exit;
+        }
+
         $this->getFields();
 
         if($this->page == 1) {
@@ -258,6 +271,29 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->response->setHttpResponseCode(200);
 
         fclose($this->tmpFile);
+    }
+
+    protected function displayInfo() {
+        print "<h1>Stores</h1><ul>";
+        $stores = $this->storeManager->getStores();
+        foreach($stores as $store) {
+            $name = $store->getName();
+            $code = $store->getCode();
+            print "<li>$name - $code</li>";
+        }
+        print "</ul>";
+
+        print "<h1>Images</h1><ul>";
+        $config = $this->viewConfig->getViewConfig()->read();
+        // print "<pre>";var_dump($config['media']['Magento_Catalog']['images']);
+        foreach($config['media']['Magento_Catalog']['images'] as $id => $image) {
+            print "<li>$id<ul>";
+            foreach($image as $attr => $val) {
+                print "<li>$attr = $val</li>";
+            }
+            print "</ul></li>";
+        }
+        print "</ul>";
     }
 
     protected function moveFeed() {
