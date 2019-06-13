@@ -23,6 +23,7 @@ use \Magento\Catalog\Model\Product\Visibility as ProductVisibility;
 use \Magento\CatalogInventory\Model\Stock\StockItemRepository as StockItemRepository;
 use \Magento\Catalog\Helper\Image as ImageHelper;
 use \Magento\Catalog\Model\CategoryRepository as CategoryRepository;
+use \Magento\Catalog\Model\Product\Gallery\ReadHandler as GalleryReadHandler;
 use \Magento\Catalog\Model\Product\OptionFactory as ProductOptionFactory;
 use \Magento\Catalog\Model\ResourceModel\Product\CollectionFactory as ProductCollectionFactory;
 use \Magento\Catalog\Model\ResourceModel\Eav\Attribute as AttributeFactory;
@@ -65,6 +66,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     protected $stockFilter;
     protected $stockRegistryInterface;
     protected $layoutInterface;
+    protected $galleryReadHandler;
 
     protected $storeManager;
 
@@ -91,6 +93,9 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
     // Extra image types to include, by default we only include product_thumbnail_image
     protected $imageTypes = array();
+
+    // Add all images to the feed
+    protected $includeMediaGallery = false;
 
     // Fields to load from child products of configurable/grouped products
     protected $childFields = array();
@@ -120,6 +125,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         StockRegistryInterface $stockRegistryInterface,
         LayoutInterface $layoutInterface,
         StoreManagerInterface $storeManager,
+        GalleryReadHandler $galleryReadHandler,
         DirectoryList $directoryList,
         EavConfig $eavConfig
     ) {
@@ -139,6 +145,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->stockFilter = $stockFilter;
         $this->stockRegistryInterface = $stockRegistryInterface;
         $this->layoutInterface = $layoutInterface;
+        $this->galleryReadHandler = $galleryReadHandler;
 
         $this->storeManager = $storeManager;
 
@@ -175,6 +182,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         if(!is_array($this->imageTypes)) {
           throw new \Exception('Image types must be an array. Example: imageTypes[]=product_small_image');
         }
+
+        $this->includeMediaGallery = $this->request->getParam('includeMediaGallery', 0);
 
         // NOTE: Using this option can greatly reduce generation speed. Since
         // requires loading full products for all child products.
@@ -403,20 +412,42 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         foreach($this->imageTypes as $type) {
             $this->setRecordValue('cached_'.$type, $this->getThumbnail($product, $type));
         }
+
+        if($this->includeMediaGallery) {
+            $this->galleryReadHandler->execute($product);
+            $images = $product->getMediaGalleryImages();
+            $mediaGallery = array();
+            foreach($images as $image) {
+                if($image->getMediaType() == 'image') {
+                    $mediaGallery[] = array(
+                        'label' => $image->getLabel(),
+                        'position' => $image->getPosition(),
+                        'disabled' => $image->getDisabled(),
+                        'image' => $this->getThumbnail($product, 'product_thumbnail_image', $image->getFile())
+                    );
+                }
+            }
+
+            $this->setRecordValue('media_gallery_json', json_encode($mediaGallery));
+        }
     }
 
-    protected function getThumbnail($product, $type = 'product_thumbnail_image') {
+    protected function getThumbnail($product, $type = 'product_thumbnail_image', $imageFile = null) {
+        $imageHelper = $this->productImageHelper->init($product, $type);
+
+        if($imageFile) {
+            $imageHelper->setImageFile($imageFile);
+        }
+
         if($this->keepAspectRatio) {
-            $resizedImage = $this->productImageHelper->init($product, $type)
-                ->constrainOnly(TRUE)
+            $resizedImage = $imageHelper->constrainOnly(TRUE)
                 ->keepAspectRatio(TRUE)
                 ->keepTransparency(TRUE)
                 ->keepFrame(FALSE)
                 ->resize($this->thumbWidth, $this->thumbHeight)
                 ->getUrl();
         } else {
-            $resizedImage = $this->productImageHelper->init($product, $type)
-                ->resize($this->thumbWidth, $this->thumbHeight)
+            $resizedImage = $imageHelper->resize($this->thumbWidth, $this->thumbHeight)
                 ->getUrl();
         }
 
@@ -608,6 +639,10 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
         if($this->includeTierPricing) {
             $this->fields[] = 'tier_pricing';
+        }
+
+        if($this->includeMediaGallery) {
+            $this->fields[] = 'media_gallery_json';
         }
 
         foreach($this->imageTypes as $type) {
