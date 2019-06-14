@@ -17,12 +17,14 @@ use \Magento\Framework\App\Http as Http;
 use \Magento\Framework\App\Request\Http as RequestHttp;
 use \Magento\Framework\App\Response\Http as ResponseHttp;
 use \Magento\Framework\App\State as State;
+use \Magento\Framework\View\Config as ViewConfig;
 
 use \Magento\Catalog\Api\ProductRepositoryInterface as ProductRepositoryInterface;
 use \Magento\Catalog\Model\Product\Visibility as ProductVisibility;
 use \Magento\CatalogInventory\Model\Stock\StockItemRepository as StockItemRepository;
 use \Magento\Catalog\Helper\Image as ImageHelper;
 use \Magento\Catalog\Model\CategoryRepository as CategoryRepository;
+use \Magento\Catalog\Model\Product\Gallery\ReadHandler as GalleryReadHandler;
 use \Magento\Catalog\Model\Product\OptionFactory as ProductOptionFactory;
 use \Magento\Catalog\Model\ResourceModel\Product\CollectionFactory as ProductCollectionFactory;
 use \Magento\Catalog\Model\ResourceModel\Eav\Attribute as AttributeFactory;
@@ -65,6 +67,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     protected $stockFilter;
     protected $stockRegistryInterface;
     protected $layoutInterface;
+    protected $galleryReadHandler;
 
     protected $storeManager;
 
@@ -92,10 +95,16 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     // Extra image types to include, by default we only include product_thumbnail_image
     protected $imageTypes = array();
 
+    // Add all images to the feed
+    protected $includeMediaGallery = false;
+
     // Fields to load from child products of configurable/grouped products
     protected $childFields = array();
 
     protected $ignoreFields;
+
+    // Show M2 install info instead of generating feed
+    protected $showInfo = false;
 
     protected $filename = '';
     protected $feedPath;
@@ -120,8 +129,10 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         StockRegistryInterface $stockRegistryInterface,
         LayoutInterface $layoutInterface,
         StoreManagerInterface $storeManager,
+        GalleryReadHandler $galleryReadHandler,
         DirectoryList $directoryList,
-        EavConfig $eavConfig
+        EavConfig $eavConfig,
+        ViewConfig $viewConfig
     ) {
         $this->request = $request;
         $this->response = $response;
@@ -139,10 +150,12 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->stockFilter = $stockFilter;
         $this->stockRegistryInterface = $stockRegistryInterface;
         $this->layoutInterface = $layoutInterface;
+        $this->galleryReadHandler = $galleryReadHandler;
 
         $this->storeManager = $storeManager;
 
         $this->eavConfig = $eavConfig;
+        $this->viewConfig = $viewConfig;
 
         $this->productEntityTypeId = $this->eavConfig->getEntityType(\Magento\Catalog\Model\Product::ENTITY)->getEntityTypeId();
 
@@ -176,6 +189,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
           throw new \Exception('Image types must be an array. Example: imageTypes[]=product_small_image');
         }
 
+        $this->includeMediaGallery = $this->request->getParam('includeMediaGallery', 0);
+
         // NOTE: Using this option can greatly reduce generation speed. Since
         // requires loading full products for all child products.
         $this->childFields = $this->request->getParam('childFields', array());
@@ -192,6 +207,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
           throw new \Exception('Ignore fields must be an array. Example: ignoreFields[]=description');
         }
 
+        $this->showInfo = $this->request->getParam('showInfo', 0);
+
         $filename = $this->request->getParam('filename', '');
 
         $this->feedPath = $this->request->getParam('path', $directoryList->getPath('media') . '/searchspring');
@@ -207,6 +224,11 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
     public function generate()
     {
+        if($this->showInfo) {
+            $this->displayInfo();
+            exit;
+        }
+
         $this->getFields();
 
         if($this->page == 1) {
@@ -249,6 +271,29 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->response->setHttpResponseCode(200);
 
         fclose($this->tmpFile);
+    }
+
+    protected function displayInfo() {
+        print "<h1>Stores</h1><ul>";
+        $stores = $this->storeManager->getStores();
+        foreach($stores as $store) {
+            $name = $store->getName();
+            $code = $store->getCode();
+            print "<li>$name - $code</li>";
+        }
+        print "</ul>";
+
+        print "<h1>Images</h1><ul>";
+        $config = $this->viewConfig->getViewConfig()->read();
+        // print "<pre>";var_dump($config['media']['Magento_Catalog']['images']);
+        foreach($config['media']['Magento_Catalog']['images'] as $id => $image) {
+            print "<li>$id<ul>";
+            foreach($image as $attr => $val) {
+                print "<li>$attr = $val</li>";
+            }
+            print "</ul></li>";
+        }
+        print "</ul>";
     }
 
     protected function moveFeed() {
@@ -408,20 +453,42 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         foreach($this->imageTypes as $type) {
             $this->setRecordValue('cached_'.$type, $this->getThumbnail($product, $type));
         }
+
+        if($this->includeMediaGallery) {
+            $this->galleryReadHandler->execute($product);
+            $images = $product->getMediaGalleryImages();
+            $mediaGallery = array();
+            foreach($images as $image) {
+                if($image->getMediaType() == 'image') {
+                    $mediaGallery[] = array(
+                        'label' => $image->getLabel(),
+                        'position' => $image->getPosition(),
+                        'disabled' => $image->getDisabled(),
+                        'image' => $this->getThumbnail($product, 'product_thumbnail_image', $image->getFile())
+                    );
+                }
+            }
+
+            $this->setRecordValue('media_gallery_json', json_encode($mediaGallery));
+        }
     }
 
-    protected function getThumbnail($product, $type = 'product_thumbnail_image') {
+    protected function getThumbnail($product, $type = 'product_thumbnail_image', $imageFile = null) {
+        $imageHelper = $this->productImageHelper->init($product, $type);
+
+        if($imageFile) {
+            $imageHelper->setImageFile($imageFile);
+        }
+
         if($this->keepAspectRatio) {
-            $resizedImage = $this->productImageHelper->init($product, $type)
-                ->constrainOnly(TRUE)
+            $resizedImage = $imageHelper->constrainOnly(TRUE)
                 ->keepAspectRatio(TRUE)
                 ->keepTransparency(TRUE)
                 ->keepFrame(FALSE)
                 ->resize($this->thumbWidth, $this->thumbHeight)
                 ->getUrl();
         } else {
-            $resizedImage = $this->productImageHelper->init($product, $type)
-                ->resize($this->thumbWidth, $this->thumbHeight)
+            $resizedImage = $imageHelper->resize($this->thumbWidth, $this->thumbHeight)
                 ->getUrl();
         }
 
@@ -613,6 +680,10 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
         if($this->includeTierPricing) {
             $this->fields[] = 'tier_pricing';
+        }
+
+        if($this->includeMediaGallery) {
+            $this->fields[] = 'media_gallery_json';
         }
 
         foreach($this->imageTypes as $type) {
