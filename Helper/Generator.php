@@ -256,7 +256,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $collection = $this->productCollectionFactory->create()
             ->addAttributeToSelect('*')
             // TODO COMMENT, FOR TESTING ONLY
-            // ->addAttributeToFilter('entity_id', array('eq' => 19309))
+            // ->addAttributeToFilter('entity_id', array('eq' => 67))
             ->setVisibility($this->productVisibility->getVisibleInSiteIds())
             ->addAttributeToFilter(
                 'status', array('eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED)
@@ -268,6 +268,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             $this->stockFilter->addInStockFilterToCollection($collection);
             $collection->getSelect()->where('at_inventory_in_stock.website_id = ?', $this->storeManager->getStore()->getId());
         }
+
         return $collection;
     }
 
@@ -539,6 +540,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             $children->addAttributeToFilter(
                 'status', array('eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED)
             );
+            $children->addStoreFilter($this->storeId);
 
             $splitAttributeId = $splitAttribute->getId();
             foreach($children as $child) {
