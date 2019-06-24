@@ -223,6 +223,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                 $this->addJSONConfig($product);
             }
 
+            $this->setRecordValue('parent_id', $product->getId());
             $this->setRecordValue('saleable', $product->isSaleable());
             $this->setRecordValue('url', $product->getProductUrl());
 
@@ -553,6 +554,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                     $this->clearChildRecord($product);
 
                     $this->setRecordValue('entity_id', $child->getId());
+                    $this->setRecordValue('parent_id', $product->getId());
 
                     // Pre-selects swatch but doesn't change thumbnail
                     // Known Bug Fixed in 2.3: https://github.com/magento/magento2/issues/18017
@@ -640,6 +642,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
     protected function clearChildRecord($product) {
         unset($this->productRecord['entity_id']);
+        unset($this->productRecord['parent_id']);
         unset($this->productRecord['sku']);
         unset($this->productRecord['url']);
         unset($this->productRecord['saleable']);
@@ -675,6 +678,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->fields = array(
             // Core Magento ID Fields
             'entity_id',
+            'parent_id',
             'type_id',
             'attribute_set_id',
             // SearchSpring Generated Fields
