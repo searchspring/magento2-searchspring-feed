@@ -217,7 +217,6 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
         foreach($collection as $product) {
             $this->productRecord = array();
-
             $this->addProductAttributesToRecord($product);
             $this->addChildAttributesToRecord($product);
             $this->addOptionsToRecord($product);
@@ -262,7 +261,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $collection = $this->productCollectionFactory->create()
             ->addAttributeToSelect('*')
             // TODO COMMENT, FOR TESTING ONLY
-            // ->addAttributeToFilter('entity_id', array('eq' => 1))
+            // ->addAttributeToFilter('entity_id', array('eq' => 67))
             ->setVisibility($this->productVisibility->getVisibleInSiteIds())
             ->addAttributeToFilter(
                 'status', array('eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED)
@@ -279,6 +278,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
     protected function addProductAttributesToRecord($product) {
         $attributes = $product->getAttributes();
+
         foreach($attributes as $attribute) {
             $code = $attribute->getAttributeCode();
             $value = $this->getProductAttribute($product, $attribute);
@@ -557,8 +557,12 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     }
 
     protected function addPricesToRecord($product) {
-        $price = $product->getPriceInfo()->getPrice('final_price')->getMinimalPrice()->getValue();
-        $this->setRecordValue('final_price', $price);
+        $finalPrice = $product->getPriceInfo()->getPrice('final_price')->getMinimalPrice()->getValue();
+        $this->setRecordValue('final_price', $finalPrice);
+
+        $regularPrice = $product->getPriceInfo()->getPrice('regular_price')->getValue();
+        $this->setRecordValue('regular_price', $regularPrice);
+
 
         if($this->includeTierPricing) {
             $tierPrice = $product->getTierPrice();
@@ -583,6 +587,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             'saleable',
             'url',
             'final_price',
+            'regular_price',
             'rating',
             'rating_count',
             'child_sku',
