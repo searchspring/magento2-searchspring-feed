@@ -503,6 +503,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
     protected function addCategoriesToRecord($product) {
         $categoryIds = $product->getCategoryIds();
+
         $categoryNames = array();
         $categoryHierarchy = array();
         $menuHierarchy = array();
@@ -512,7 +513,11 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         }
 
         foreach($categoryIds as $categoryId) {
-            $category = $this->loadCategory($categoryId);
+            try {
+                $category = $this->loadCategory($categoryId);
+            } catch (\Exception $e) {
+                continue;
+            }
 
             if(!$category['is_active']) {
                 continue;
