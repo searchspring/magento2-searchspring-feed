@@ -262,7 +262,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $collection = $this->productCollectionFactory->create()
             ->addAttributeToSelect('*')
             // TODO COMMENT, FOR TESTING ONLY
-            // ->addAttributeToFilter('entity_id', array('eq' => 1))
+            ->addAttributeToFilter('entity_id', array('eq' => 67))
             ->setVisibility($this->productVisibility->getVisibleInSiteIds())
             ->addAttributeToFilter(
                 'status', array('eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED)
@@ -431,6 +431,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
     protected function addCategoriesToRecord($product) {
         $categoryIds = $product->getCategoryIds();
+
         $categoryNames = array();
         $categoryHierarchy = array();
         $menuHierarchy = array();
@@ -440,7 +441,11 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         }
 
         foreach($categoryIds as $categoryId) {
-            $category = $this->loadCategory($categoryId);
+            try {
+                $category = $this->loadCategory($categoryId);
+            } catch (\Exception $e) {
+                continue;
+            }
 
             if(!$category['is_active']) {
                 continue;
@@ -464,6 +469,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             }
         }
 
+        var_dump($categoryNames);
         $this->setRecordValue('categories', $categoryNames);
         $this->setRecordValue('category_ids', $categoryIds);
         $this->setRecordValue('category_hierarchy', array_unique($categoryHierarchy));
