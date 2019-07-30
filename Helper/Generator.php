@@ -546,7 +546,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             $splitAttributeId = $splitAttribute->getId();
             foreach($children as $child) {
                 $splitValue = $this->getProductAttribute($child, $splitAttribute);
-                $splitValueId = $product->getResource()->getAttribute($this->productSplitField)->getSource()->getOptionId($splitValue);
+                $splitValueId = $child->getCustomAttribute($this->productSplitField)->getValue();
 
                 if(!isset($splitRecords[$splitValue])) {
 
