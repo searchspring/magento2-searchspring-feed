@@ -35,6 +35,11 @@ use \Magento\Framework\App\Filesystem\DirectoryList as DirectoryList;
 
 use \Magento\Framework\View\LayoutInterface as LayoutInterface;
 
+use \Magento\InventoryCatalog\Model\GetStockIdForCurrentWebsite as GetStockId;
+use \Magento\InventorySalesApi\Api\GetProductSalableQtyInterface as GetProductSalableQty;
+use \Magento\InventorySalesApi\Api\IsProductSalableInterface as ProductSalable;
+use \Magento\InventoryConfigurationApi\Model\IsSourceItemManagementAllowedForProductTypeInterface as SourceItemAllowed;
+
 use \Magento\Eav\Model\Config as EavConfig;
 
 use \Magento\Store\Model\StoreManagerInterface as StoreManagerInterface;
@@ -70,6 +75,11 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     protected $stockRegistryInterface;
     protected $layoutInterface;
     protected $galleryReadHandler;
+
+    protected $getStockId;
+    protected $getProductSalableQty;
+    protected $productSalable;
+    protected $sourceItemAllowed;
 
     protected $storeManager;
 
@@ -131,6 +141,10 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         StockFilter $stockFilter,
         StockRegistryInterface $stockRegistryInterface,
         LayoutInterface $layoutInterface,
+        GetStockId $getStockId,
+        GetProductSalableQty $getProductSalableQty,
+        ProductSalable $productSalable,
+        SourceItemAllowed $sourceItemAllowed,
         StoreManagerInterface $storeManager,
         GalleryReadHandler $galleryReadHandler,
         DirectoryList $directoryList,
@@ -154,6 +168,13 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->stockRegistryInterface = $stockRegistryInterface;
         $this->layoutInterface = $layoutInterface;
         $this->galleryReadHandler = $galleryReadHandler;
+
+        $this->getStockId = $getStockId;
+        $this->stockId = $this->getStockId->execute();
+
+        $this->getProductSalableQty = $getProductSalableQty;
+        $this->productSalable = $productSalable;
+        $this->sourceItemAllowed = $sourceItemAllowed;
 
         $this->storeManager = $storeManager;
 
@@ -248,7 +269,6 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         }
 
         $collection = $this->getProductCollection();
-
         foreach($collection as $product) {
             $this->productRecord = array();
             $this->addProductAttributesToRecord($product);
@@ -264,7 +284,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                 $this->addJSONConfig($product);
             }
 
-            $this->setRecordValue('saleable', $product->isSaleable());
+            $this->setRecordValue('saleable', $this->productSalable->execute($product->getSku(), $this->stockId));
             $this->setRecordValue('url', $product->getProductUrl());
 
             $this->writeRecord();
@@ -296,7 +316,6 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
         print "<h1>Images</h1><ul>";
         $config = $this->viewConfig->getViewConfig()->read();
-        // print "<pre>";var_dump($config['media']['Magento_Catalog']['images']);
         foreach($config['media']['Magento_Catalog']['images'] as $id => $image) {
             print "<li>$id<ul>";
             foreach($image as $attr => $val) {
@@ -326,6 +345,13 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             ->setOrder('entity_id','ASC')
             ->setPageSize($this->count)
             ->setCurPage($this->page);
+
+        // We may need to use this to include out of stock products in Magent 2.3.x+
+        // but Sail doesn't include them so I'm leaving it commented out
+        // if($this->includeOutOfStock) {
+        //     // This will incude out of stock products in collection for v2.3.
+        //     $collection->setFlag('has_stock_status_filter', true);
+        // }
 
         if(!$this->includeOutOfStock) {
             $this->stockFilter->addInStockFilterToCollection($collection);
@@ -393,6 +419,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                 'status', array('eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED)
             );
 
+            $childQty = 0;
             foreach($children as $child) {
                 foreach($childAttributes as $childAttribute) {
                     $code = $childAttribute->getAttributeCode();
@@ -400,17 +427,18 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                     $this->setRecordValue($code, $value);
                 }
 
-                // NOTE We're not using child_qty anymore as that should be
-                // taken care of by saleable. If there is a need adding it here
-                // should be easy.
                 $this->setRecordValue('child_sku', $child->getSku());
                 $this->setRecordValue('child_name', $child->getName());
+
+                // This only works in M2 2.3.x+
+                $childQty += $this->getProductSalableQty->execute($child->getSku(), $this->stockId);
 
                 if($this->includeChildPrices) {
                     $price = $child->getPriceInfo()->getPrice('final_price')->getMinimalPrice()->getValue();
                     $this->setRecordValue('child_final_price', $price);
                 }
             }
+            $this->setRecordValue('stock_qty', $childQty);
         }
 
         if(Grouped::TYPE_CODE === $product->getTypeId()) {
@@ -422,6 +450,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             }
 
             $children = $product->getTypeInstance()->getAssociatedProducts($product);
+
+            $childQty = 0;
             foreach($children as $child) {
                 // If we're pulling non-configurable attributes we need to load the full child product
                 if(sizeof($this->childFields) > 0) {
@@ -436,11 +466,15 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                 $this->setRecordValue('child_sku', $child->getSku());
                 $this->setRecordValue('child_name', $child->getName());
 
+                // This only works in M2 2.3.x+
+                $childQty += $this->getProductSalableQty->execute($child->getSku(), $this->stockId);
+
                 if($this->includeChildPrices) {
                     $price = $child->getPriceInfo()->getPrice('final_price')->getMinimalPrice()->getValue();
                     $this->setRecordValue('child_final_price', $price);
                 }
             }
+            $this->setRecordValue('stock_qty', $childQty);
         };
     }
 
@@ -511,7 +545,15 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     protected function addStockInfoToRecord($product) {
         $stockItem = $this->stockRegistryInterface->getStockItem($product->getId());
         $this->setRecordValue('in_stock', $stockItem->getIsInStock());
-        $this->setRecordValue('stock_qty', $stockItem->getQty());
+
+        // For simple products fetch stock_qty, other product types will fetch
+        // qty by calculating based on children
+        if($this->sourceItemAllowed->execute($product->getTypeId())) {
+            $qty = $this->getProductSalableQty->execute($product->getSku(), $this->stockId);
+            $this->setRecordValue('stock_qty', $qty);
+        }
+
+
     }
 
     protected function addCategoriesToRecord($product) {
