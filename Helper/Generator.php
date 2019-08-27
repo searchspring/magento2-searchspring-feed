@@ -348,10 +348,10 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
         // We may need to use this to include out of stock products in Magent 2.3.x+
         // but Sail doesn't include them so I'm leaving it commented out
-        // if($this->includeOutOfStock) {
-        //     // This will incude out of stock products in collection for v2.3.
-        //     $collection->setFlag('has_stock_status_filter', true);
-        // }
+        if($this->includeOutOfStock) {
+            // This will incude out of stock products in collection for v2.3.
+            $collection->setFlag('has_stock_status_filter', true);
+        }
 
         if(!$this->includeOutOfStock) {
             $this->stockFilter->addInStockFilterToCollection($collection);
