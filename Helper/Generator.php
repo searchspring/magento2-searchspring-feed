@@ -169,9 +169,6 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->layoutInterface = $layoutInterface;
         $this->galleryReadHandler = $galleryReadHandler;
 
-        $this->getStockId = $getStockId;
-        $this->stockId = $this->getStockId->execute();
-
         $this->getProductSalableQty = $getProductSalableQty;
         $this->productSalable = $productSalable;
         $this->sourceItemAllowed = $sourceItemAllowed;
@@ -185,6 +182,9 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
         $this->storeId = $this->request->getParam('store', 'default');
         $this->storeManager->setCurrentStore($this->storeId);
+
+        $this->getStockId = $getStockId;
+        $this->stockId = $this->getStockId->execute();
 
         $this->count = $this->request->getParam('count', 100);
         $this->page = $this->request->getParam('page', 1);
