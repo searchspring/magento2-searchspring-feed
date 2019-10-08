@@ -212,13 +212,30 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
         $this->includeMediaGallery = $this->request->getParam('includeMediaGallery', 0);
 
-        // NOTE: Using this option can greatly reduce generation speed. Since
-        // requires loading full products for all child products.
-        $this->childFields = $this->request->getParam('childFields', array());
 
-        if(!is_array($this->childFields)) {
-          throw new \Exception('Child fields must be an array. Example: childFields[]=color_family');
-        }
+        $this->childFields = array(
+            "action",
+            "insulation",
+            "pieces_ir",
+            "power_source",
+            "professional_league",
+            "waterproof",
+            "caliber_ir",
+            "capacity_ir",
+            "colorgroup_ir",
+            "curvature_ir",
+            "flex_ir",
+            "gauge_ir",
+            "gender_ir",
+            "handed_ir",
+            "length_ir",
+            "power_ir",
+            "size_ir",
+            "team_ir",
+            "temperature_ir",
+            "weight_ir",
+            "width_ir"
+        );
 
         $this->includeOutOfStock = $this->request->getParam('includeOutOfStock', 0);
 
