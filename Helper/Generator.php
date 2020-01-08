@@ -312,7 +312,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                 }
             }
 
-            $children = $product->getTypeInstance()->getUsedProducts($product);
+            $children = $product->getTypeInstance()->getUsedProductCollection($product);
             $this->stockFilter->addInStockFilterToCollection($children);
             $children->getSelect()->where('at_inventory_in_stock.website_id = ?', $this->storeManager->getStore()->getId());
             
