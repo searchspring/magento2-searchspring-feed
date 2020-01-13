@@ -545,6 +545,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                 'status', array('eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED)
             );
             $children->addStoreFilter($this->storeId);
+            $this->stockFilter->addInStockFilterToCollection($children);
+            $children->getSelect()->where('at_inventory_in_stock.website_id = ?', $this->storeManager->getStore()->getId());
 
             $splitAttributeId = $splitAttribute->getId();
             foreach($children as $child) {
