@@ -210,6 +210,10 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->showInfo = $this->request->getParam('showInfo', 0);
 
         $filename = $this->request->getParam('filename', '');
+        
+        if(!preg_match('/^[a-z0-9]+$/i', $filename)) {
+            throw new \Exception('Invalid filename: ' . $filename);
+        }
 
         $this->feedPath = $this->request->getParam('path', $directoryList->getPath('media') . '/searchspring');
         $this->tmpFilename = 'searchspring-' . $this->storeId . ($filename ? '-' . $filename : '') . '.tmp.csv';
