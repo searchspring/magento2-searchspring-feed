@@ -36,6 +36,7 @@ use \Magento\Framework\App\Filesystem\DirectoryList as DirectoryList;
 use \Magento\Framework\View\LayoutInterface as LayoutInterface;
 
 use \Magento\Eav\Model\Config as EavConfig;
+use \Magento\Eav\Api\AttributeSetRepositoryInterface as AttributeSetRepositoryInterface;
 
 use \Magento\Store\Model\StoreManagerInterface as StoreManagerInterface;
 
@@ -68,6 +69,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     protected $stockRegistryInterface;
     protected $layoutInterface;
     protected $galleryReadHandler;
+    protected $eavConfig;
+    protected $attributeSetRepositoryInterface;
 
     protected $storeManager;
 
@@ -132,6 +135,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         GalleryReadHandler $galleryReadHandler,
         DirectoryList $directoryList,
         EavConfig $eavConfig,
+        AttributeSetRepositoryInterface $attributeSetRepositoryInterface,
         ViewConfig $viewConfig
     ) {
         $this->request = $request;
@@ -155,6 +159,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->storeManager = $storeManager;
 
         $this->eavConfig = $eavConfig;
+        $this->attributeSetRepositoryInterface = $attributeSetRepositoryInterface;
         $this->viewConfig = $viewConfig;
 
         $this->productEntityTypeId = $this->eavConfig->getEntityType(\Magento\Catalog\Model\Product::ENTITY)->getEntityTypeId();
@@ -211,8 +216,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
         $filename = $this->request->getParam('filename', '');
         
-        if(!preg_match('/^[a-z0-9]+$/i', $filename)) {
-            throw new \Exception('Invalid filename: ' . $filename);
+        if(!preg_match('/^[a-z0-9]+$/i', $filename)) {	
+            throw new \Exception('Invalid filename: ' . $filename);	
         }
 
         $this->feedPath = $this->request->getParam('path', $directoryList->getPath('media') . '/searchspring');
@@ -258,6 +263,9 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
             $this->setRecordValue('saleable', $product->isSaleable());
             $this->setRecordValue('url', $product->getProductUrl());
+
+            $attributeSetRepository = $this->attributeSet->get($product->getAttributeSetId());
+            $this->setRecordValue('attribute_set_name', $attributeSetRepository->getAttributeSetName());
 
             $this->writeRecord();
         }
@@ -659,6 +667,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             'entity_id',
             'type_id',
             'attribute_set_id',
+            'attribute_set_name',
             // SearchSpring Generated Fields
             'cached_thumbnail',
             'stock_qty',
