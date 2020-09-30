@@ -210,7 +210,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->showInfo = $this->request->getParam('showInfo', 0);
 
         $filename = $this->request->getParam('filename', '');
-        
+
         if(!preg_match('/^[a-z0-9]+$/i', $filename)) {
             throw new \Exception('Invalid filename: ' . $filename);
         }
@@ -310,7 +310,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $collection = $this->productCollectionFactory->create()
             ->addAttributeToSelect('*')
             // TODO COMMENT, FOR TESTING ONLY
-            // ->addAttributeToFilter('entity_id', array('eq' => 67))
+            // ->addAttributeToFilter('entity_id', array('eq' => 112483))
             ->setVisibility($this->productVisibility->getVisibleInSiteIds())
             ->addAttributeToFilter(
                 'status', array('eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED)
@@ -384,6 +384,9 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                 'status', array('eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED)
             );
 
+            $parentSku = $product->getSku();
+            $child_qty = 0;
+
             foreach($children as $child) {
                 foreach($childAttributes as $childAttribute) {
                     $code = $childAttribute->getAttributeCode();
@@ -391,17 +394,21 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                     $this->setRecordValue($code, $value);
                 }
 
-                // NOTE We're not using child_qty anymore as that should be
-                // taken care of by saleable. If there is a need adding it here
-                // should be easy.
                 $this->setRecordValue('child_sku', $child->getSku());
                 $this->setRecordValue('child_name', $child->getName());
+
+                if($parentSku == $child->getData('trueparent_configurable')) {
+                    $stockItem = $this->stockRegistryInterface->getStockItem($child->getId());
+                    $child_qty += $stockItem->getQty();
+                }
 
                 if($this->includeChildPrices) {
                     $price = $child->getPriceInfo()->getPrice('final_price')->getMinimalPrice()->getValue();
                     $this->setRecordValue('child_final_price', $price);
                 }
             }
+
+            $this->setRecordValue('child_qty', $child_qty);
         }
 
         if(Grouped::TYPE_CODE === $product->getTypeId()) {
