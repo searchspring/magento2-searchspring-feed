@@ -679,7 +679,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             'rating',
             'rating_count',
             'child_sku',
-            'child_name'
+            'child_name',
+            'child_qty'
         );
 
         if($this->includeMenuCategories) {
