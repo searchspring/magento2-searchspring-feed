@@ -315,6 +315,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             ->addAttributeToFilter(
                 'status', array('eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED)
             )
+            ->setOrder('entity_id','ASC')
             ->setPageSize($this->count)
             ->setCurPage($this->page);
 
