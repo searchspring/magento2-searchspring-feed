@@ -105,6 +105,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
     // Show M2 install info instead of generating feed
     protected $showInfo = false;
+    protected $debug = false;
 
     protected $filename = '';
     protected $feedPath;
@@ -208,6 +209,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         }
 
         $this->showInfo = $this->request->getParam('showInfo', 0);
+        $this->debug = $this->request->getParam('debug', 0);
+
 
         $filename = $this->request->getParam('filename', '');
 
@@ -317,6 +320,10 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             )
             ->setPageSize($this->count)
             ->setCurPage($this->page);
+
+        if($this->debug) {
+            $collection->addAttributeToFilter('entity_id', array('eq' => $this->debug));
+        }
 
         if(!$this->includeOutOfStock) {
             $this->stockFilter->addInStockFilterToCollection($collection);
@@ -515,6 +522,13 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     protected function addCategoriesToRecord($product) {
         $categoryIds = $product->getCategoryIds();
 
+        if($this->debug) {
+            print "<h2>Found Category IDs</h2>";
+            print "<pre>";
+            var_dump($categoryIds);
+            print "</pre>";
+        }
+
         $categoryNames = array();
         $categoryHierarchy = array();
         $menuHierarchy = array();
@@ -535,6 +549,13 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             }
 
             $categoryNames[] = $category['name'];
+            if($this->debug) {
+                print "<h2>Hierarchy for $categoryId</h2>";
+                print "<pre>";
+                var_dump($category['hierarchy']);
+                print "</pre>";
+            }
+
             foreach($category['hierarchy'] as $hierarchy) {
                 $categoryHierarchy[] = $hierarchy;
             }
@@ -556,6 +577,24 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->setRecordValue('category_ids', $categoryIds);
         $this->setRecordValue('category_hierarchy', array_unique($categoryHierarchy));
 
+
+        if($this->debug) {
+            print "<h2>Writing Category Data</h2>";
+            print "<h3>Category Names</h3>";
+            print "<pre>";
+            var_dump($categoryNames);
+            print "</pre>";
+            print "<h3>Category IDs</h3>";
+            print "<pre>";
+            var_dump($categoryIds);
+            print "</pre>";
+            print "<h3>Category Hierarchy</h3>";
+            print "<pre>";
+            var_dump(array_unique($categoryHierarchy));
+            print "</pre>";
+            exit;
+        }
+
         if($this->includeMenuCategories) {
             $this->setRecordValue('menu_hierarchy', array_unique($menuHierarchy));
         }
@@ -572,6 +611,14 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             $category = $this->categoryRepository->get($categoryId);
             $categoryName = $category->getName();
             $categoryPath = $category->getPath();
+
+            if($this->debug) {
+                print "<h2>Loading $categoryId</h2>";
+                print "<pre>";
+                print "Name: $categoryName \n";
+                print "Path: $categoryPath \n";
+                print "</pre>";
+            }
 
             $categoryHierarchy = array();
 
