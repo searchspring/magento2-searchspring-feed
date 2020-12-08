@@ -375,6 +375,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             }
 
             $children = $product->getTypeInstance()->getUsedProductCollection($product);
+            $this->stockFilter->addInStockFilterToCollection($children);
 
             // If we're pulling non-configurable attributes we need to load the full child product
             if(sizeof($this->childFields) > 0) {
@@ -414,6 +415,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             }
 
             $children = $product->getTypeInstance()->getAssociatedProducts($product);
+            $this->stockFilter->addInStockFilterToCollection($children);
+            
             foreach($children as $child) {
                 // If we're pulling non-configurable attributes we need to load the full child product
                 if(sizeof($this->childFields) > 0) {
