@@ -226,7 +226,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         if(!is_dir($this->feedPath)) {
             mkdir($this->feedPath, 0755, true);
         }
-        var_dump($this->feedPath . '/' . $this->tmpFilename);
+
         // TODO explore using CSV writer built into Magento, it looks like it can only write whole file and not append
         $this->tmpFile = fopen($this->feedPath . '/' . $this->tmpFilename, 'a');
     }
