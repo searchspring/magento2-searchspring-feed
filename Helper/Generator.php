@@ -45,7 +45,9 @@ use \Magento\ConfigurableProduct\Model\Product\Type\Configurable as Configurable
 use \Magento\GroupedProduct\Model\Product\Type\Grouped as Grouped;
 
 class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
-
+    const CSV_FORMAT = 'csv';
+    const JSON_FORMAT = 'json';
+    
     protected $productRecord = array();
     protected $categoryCache = array();
     protected $fields = array();
@@ -108,6 +110,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
     protected $filename = '';
     protected $feedPath;
+    protected $feedFormat = self::CSV_FORMAT;
 
     protected $tmpFile;
     protected $tmpFilename;
@@ -215,13 +218,15 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             throw new \Exception('Invalid filename: ' . $filename);
         }
 
+        $this->feedFormat = $this->request->getParam('format', self::CSV_FORMAT);
+
         $this->feedPath = $this->request->getParam('path', $directoryList->getPath('media') . '/searchspring');
-        $this->tmpFilename = 'searchspring-' . $this->storeId . ($filename ? '-' . $filename : '') . '.tmp.csv';
+        $this->tmpFilename = 'searchspring-' . $this->storeId . ($filename ? '-' . $filename : '') . '.tmp.' . $this->feedFormat;
 
         if(!is_dir($this->feedPath)) {
             mkdir($this->feedPath, 0755, true);
         }
-
+        var_dump($this->feedPath . '/' . $this->tmpFilename);
         // TODO explore using CSV writer built into Magento, it looks like it can only write whole file and not append
         $this->tmpFile = fopen($this->feedPath . '/' . $this->tmpFilename, 'a');
     }
@@ -233,10 +238,13 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             exit;
         }
 
-        $this->getFields();
+        // Only need all fields for CSV format
+        if($this->feedFormat == self::CSV_FORMAT) {
+            $this->getFields();
 
-        if($this->page == 1) {
-            $this->writeHeader();
+            if($this->page == 1) {
+                $this->writeHeader();
+            }
         }
 
         $collection = $this->getProductCollection();
@@ -300,7 +308,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     }
 
     protected function moveFeed() {
-        $filename = 'searchspring-' . $this->storeId . '.csv';
+        $filename = 'searchspring-' . $this->storeId . '.' . $this->feedFormat;
         rename($this->feedPath . '/' . $this->tmpFilename, $this->feedPath . '/' . $filename);
     }
 
@@ -755,6 +763,22 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     }
 
     protected function writeRecord() {
+        if($this->feedFormat == self::CSV_FORMAT) {
+            $this->writeCsvRecord();
+        } else if($this->feedFormat == self::JSON_FORMAT) {
+            $this->writeJsonRecord();
+        }
+    }
+
+    protected function writeJsonRecord() {
+        foreach($this->ignoreFields as $field) {
+            unset($this->productRecord[$field]);
+        }
+        
+        fwrite($this->tmpFile, json_encode($this->productRecord) . "\n");
+    }
+
+    protected function writeCsvRecord() {
         $row = array();
         foreach($this->fields as $field) {
             if(isset($this->productRecord[$field])) {
