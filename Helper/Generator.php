@@ -395,6 +395,17 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             $child_qty = 0;
 
             foreach($children as $child) {
+                if($parentSku == $child->getData('trueparent_configurable')) {
+                    $stockItem = $this->stockRegistryInterface->getStockItem($child->getId());
+                    $current_qty = $stockItem->getQty();
+
+                    if($current_qty < 1) {
+                        continue;
+                    }
+
+                    $child_qty += $current_qty;
+                }
+
                 foreach($childAttributes as $childAttribute) {
                     $code = $childAttribute->getAttributeCode();
                     $value = $this->getProductAttribute($child, $childAttribute);
@@ -403,11 +414,6 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
                 $this->setRecordValue('child_sku', $child->getSku());
                 $this->setRecordValue('child_name', $child->getName());
-
-                if($parentSku == $child->getData('trueparent_configurable')) {
-                    $stockItem = $this->stockRegistryInterface->getStockItem($child->getId());
-                    $child_qty += $stockItem->getQty();
-                }
 
                 if($this->includeChildPrices) {
                     $price = $child->getPriceInfo()->getPrice('final_price')->getMinimalPrice()->getValue();
