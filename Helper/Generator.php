@@ -78,6 +78,10 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     protected $count = 100;
     protected $page = 1;
 
+    protected $debug = 0;
+    protected $debugOutput = array();
+    protected $debugId;
+
     protected $thumbWidth = 250;
     protected $thumbHeight = 250;
     protected $keepAspectRatio = 1;
@@ -172,6 +176,10 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             $this->page = 1;
         }
 
+        $this->debug = $this->request->getParam('debug', 0);
+        $this->debugId = $this->request->getParam('debugId');
+        $this->debugOutput = $this->request->getParam('debugOutput', array('id', 'name'));
+
         $this->thumbWidth  = $this->request->getParam('thumbWidth', 250);
         $this->thumbHeight = $this->request->getParam('thumbHeight', 250);
         $this->keepAspectRatio = $this->request->getParam('keepAspectRatio', 1);
@@ -249,7 +257,21 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
         $collection = $this->getProductCollection();
 
+        if($this->debug) {
+            print "<strong>Collection Size:</strong> " . $collection->getSize() . "<br /><hr />";
+        }
+
         foreach($collection as $product) {
+            if($this->debug) {
+                if(in_array('id', $this->debugOutput)) {
+                    print "<strong>Product ID:</strong> " . $product->getId() . "<br />";
+                }
+
+                if(in_array('name', $this->debugOutput)) {
+                    print "<strong>Product Name:</strong> " . $product->getName() . "<br />";
+                }
+            }
+
             $this->productRecord = array();
             $this->addProductAttributesToRecord($product);
             $this->addChildAttributesToRecord($product);
@@ -266,6 +288,14 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
             $this->setRecordValue('saleable', $product->isSaleable());
             $this->setRecordValue('url', $product->getProductUrl());
+
+            if($this->debug) {
+                if(in_array('json', $this->debugOutput)) {
+                    print '<pre style="max-height: 500px; overflow: scroll;background-color:#f3f3f3;border: 1px solid #CCC;"><code>' . json_encode($this->productRecord, JSON_PRETTY_PRINT) . "</code></pre>";
+                }
+                print "<hr />";
+            }
+
 
             $this->writeRecord();
         }
@@ -317,8 +347,6 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     protected function getProductCollection() {
         $collection = $this->productCollectionFactory->create()
             ->addAttributeToSelect('*')
-            // TODO COMMENT, FOR TESTING ONLY
-            // ->addAttributeToFilter('entity_id', array('eq' => 67))
             ->setVisibility($this->productVisibility->getVisibleInSiteIds())
             ->addAttributeToFilter(
                 'status', array('eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED)
@@ -326,6 +354,10 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             ->setOrder('entity_id','ASC')
             ->setPageSize($this->count)
             ->setCurPage($this->page);
+
+        if($this->debug && $this->debugId) {
+            $collection->addAttributeToFilter('entity_id', array('eq' => $this->debugId));
+        }
 
         if(!$this->includeOutOfStock) {
             $this->stockFilter->addInStockFilterToCollection($collection);
