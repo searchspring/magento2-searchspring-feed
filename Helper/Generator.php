@@ -730,7 +730,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         }
 
         // Remove ignored fields
-        $this->fields = array_diff($this->fields, $this->ignoreFields);
+        $this->fields = array_unique(array_diff($this->fields, $this->ignoreFields));
     }
 
     protected function textToFieldName($text) {
