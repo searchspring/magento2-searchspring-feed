@@ -45,9 +45,7 @@ use \Magento\ConfigurableProduct\Model\Product\Type\Configurable as Configurable
 use \Magento\GroupedProduct\Model\Product\Type\Grouped as Grouped;
 
 class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
-    const CSV_FORMAT = 'csv';
-    const JSON_FORMAT = 'json';
-    
+
     protected $productRecord = array();
     protected $categoryCache = array();
     protected $fields = array();
@@ -104,13 +102,13 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     protected $childFields = array();
 
     protected $ignoreFields;
+    protected $skipFields;
 
     // Show M2 install info instead of generating feed
     protected $showInfo = false;
 
     protected $filename = '';
     protected $feedPath;
-    protected $feedFormat = self::CSV_FORMAT;
 
     protected $tmpFile;
     protected $tmpFilename;
@@ -206,6 +204,32 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
         $this->ignoreFields = $this->request->getParam('ignoreFields', array());
 
+        $this->skipFields = array(
+            'commissioning_category',
+            'page_layout',
+            'ts_packaging_id',
+            'tax_class_id',
+            'custom_layout',
+            'status',
+            'giftcard_type',
+            'allow_open_amount',
+            'quantity_and_stock_status',
+            'ts_packaging_type',
+            'visibility',
+            'ts_country_of_origin',
+            'country_of_manufacture',
+            'is_returnable',
+            'merchant_center_category',
+            'shipment_type',
+            'price_view',
+            'msrp_display_actual_price_type',
+            'options_container',
+            'custom_layout_update',
+            'custom_layout_update_file',
+            'custom_design',
+            'gift_message_available'
+        );
+
         if(!is_array($this->ignoreFields)) {
           throw new \Exception('Ignore fields must be an array. Example: ignoreFields[]=description');
         }
@@ -218,10 +242,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             throw new \Exception('Invalid filename: ' . $filename);
         }
 
-        $this->feedFormat = $this->request->getParam('format', self::CSV_FORMAT);
-
         $this->feedPath = $this->request->getParam('path', $directoryList->getPath('media') . '/searchspring');
-        $this->tmpFilename = 'searchspring-' . $this->storeId . ($filename ? '-' . $filename : '') . '.tmp.' . $this->feedFormat;
+        $this->tmpFilename = 'searchspring-' . $this->storeId . ($filename ? '-' . $filename : '') . '.tmp.csv';
 
         if(!is_dir($this->feedPath)) {
             mkdir($this->feedPath, 0755, true);
@@ -237,14 +259,11 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             $this->displayInfo();
             exit;
         }
-
-        // Only need all fields for CSV format
-        if($this->feedFormat == self::CSV_FORMAT) {
-            $this->getFields();
-
-            if($this->page == 1) {
-                $this->writeHeader();
-            }
+        
+        $this->getFields();
+        
+        if($this->page == 1) {
+            $this->writeHeader();
         }
 
         $collection = $this->getProductCollection();
@@ -268,6 +287,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             $this->setRecordValue('url', $product->getProductUrl());
 
             $this->writeRecord();
+
         }
 
         // Check if we're on last page
@@ -308,7 +328,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     }
 
     protected function moveFeed() {
-        $filename = 'searchspring-' . $this->storeId . '.' . $this->feedFormat;
+        $filename = 'searchspring-' . $this->storeId . '.csv';
         rename($this->feedPath . '/' . $this->tmpFilename, $this->feedPath . '/' . $filename);
     }
 
@@ -323,7 +343,6 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             ->addAttributeToFilter(
                 'status', array('eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED)
             )
-            ->setOrder('entity_id','ASC')
             ->setPageSize($this->count)
             ->setCurPage($this->page);
 
@@ -336,9 +355,15 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
     protected function addProductAttributesToRecord($product) {
         $attributes = $product->getAttributes();
-
+        
         foreach($attributes as $attribute) {
             $code = $attribute->getAttributeCode();
+
+            // Skip attributes in skip list
+            if(in_array($code, $this->skipFields)) {
+                continue;
+            }
+
             $value = $this->getProductAttribute($product, $attribute);
             $this->setRecordValue($code, $value);
         }
@@ -731,6 +756,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
         // Remove ignored fields
         $this->fields = array_diff($this->fields, $this->ignoreFields);
+        $this->fields = array_diff($this->fields, $this->skipFields);
     }
 
     protected function textToFieldName($text) {
@@ -739,6 +765,10 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
     protected function setRecordValue($field, $value) {
         if(in_array($field, $this->ignoreFields)) {
+            return;
+        }
+
+        if(in_array($field, $this->skipFields)) {
             return;
         }
 
@@ -763,22 +793,6 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     }
 
     protected function writeRecord() {
-        if($this->feedFormat == self::CSV_FORMAT) {
-            $this->writeCsvRecord();
-        } else if($this->feedFormat == self::JSON_FORMAT) {
-            $this->writeJsonRecord();
-        }
-    }
-
-    protected function writeJsonRecord() {
-        foreach($this->ignoreFields as $field) {
-            unset($this->productRecord[$field]);
-        }
-        
-        fwrite($this->tmpFile, json_encode($this->productRecord) . "\n");
-    }
-
-    protected function writeCsvRecord() {
         $row = array();
         foreach($this->fields as $field) {
             if(isset($this->productRecord[$field])) {
