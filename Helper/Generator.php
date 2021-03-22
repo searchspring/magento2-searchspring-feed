@@ -27,6 +27,8 @@ use \Magento\Catalog\Model\CategoryRepository as CategoryRepository;
 use \Magento\Catalog\Model\Product\Gallery\ReadHandler as GalleryReadHandler;
 use \Magento\Catalog\Model\Product\OptionFactory as ProductOptionFactory;
 use \Magento\Catalog\Model\ResourceModel\Product\CollectionFactory as ProductCollectionFactory;
+use \Magento\Customer\Model\CustomerFactory as CustomerFactory;
+use \Magento\Customer\Model\SessionFactory as SessionFactory;
 use \Magento\Catalog\Model\ResourceModel\Eav\Attribute as AttributeFactory;
 use \Magento\CatalogInventory\Api\StockRegistryInterface as StockRegistryInterface;
 use \Magento\CatalogInventory\Helper\Stock as StockFilter;
@@ -59,6 +61,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
     protected $productCollectionFactory;
     protected $productOptionFactory;
+    protected $customerFactory;
+    protected $sessionFactory;
     protected $productRepositoryInterface;
     protected $productVisibility;
     protected $stockItemRepository;
@@ -94,6 +98,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     protected $includeChildPrices = false;
     protected $includeTierPricing = false;
 
+    protected $customerId;
+
     // Extra image types to include, by default we only include product_thumbnail_image
     protected $imageTypes = array();
 
@@ -122,6 +128,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         ProductVisibility $productVisibility,
         ProductOptionFactory $productOptionFactory,
         ProductCollectionFactory $productCollectionFactory,
+        CustomerFactory $customerFactory,
+        SessionFactory $sessionFactory,
         ProductRepositoryInterface $productRepository,
         StockItemRepository $stockItemRepository,
         ImageHelper $productImageHelper,
@@ -186,6 +194,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->includeChildPrices = $this->request->getParam('includeChildPrices', 0);
         $this->includeTierPricing = $this->request->getParam('includeTierPricing', 0);
 
+        $this->customerId = $this->request->getParam('customerId');
+
         $this->imageTypes = $this->request->getParam('imageTypes', array());
 
         if(!is_array($this->imageTypes)) {
@@ -229,6 +239,18 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
         // TODO explore using CSV writer built into Magento, it looks like it can only write whole file and not append
         $this->tmpFile = fopen($this->feedPath . '/' . $this->tmpFilename, 'a');
+
+        // If a customerId is passed act as a certain user for product/category permissions
+        if($this->customerId) {
+            // Load customer based upon ID
+            $customer = $customerFactory->create()->load($this->customerId);
+
+            // Create session
+            $sessionManager = $sessionFactory->create();
+
+            // Log in as customer
+            $sessionManager->setCustomerAsLoggedIn($customer);
+        }
     }
 
     public function generate()
