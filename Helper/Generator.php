@@ -404,6 +404,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                     }
 
                     $child_qty += $current_qty;
+                } else {
+                    continue;   
                 }
 
                 foreach($childAttributes as $childAttribute) {
