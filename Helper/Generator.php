@@ -259,6 +259,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             $this->addCategoriesToRecord($product);
             $this->addRatingsToRecord($product);
             $this->addPricesToRecord($product);
+            $this->addSwatches($product);
+            $this->addBadges($product);
 
             if($this->includeJSONConfig) {
                 $this->addJSONConfig($product);
@@ -635,6 +637,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             $this->setRecordValue('rating_count', $rating->getCount());
         }
     }
+    
+
 
     protected function addJSONConfig($product) {
         if(Configurable::TYPE_CODE === $product->getTypeId()) {
@@ -645,6 +649,27 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             $this->setRecordValue('swatch_json_config', $swatchBlock->getJsonSwatchConfig());
         }
     }
+    
+    
+    protected function addSwatches($product) {
+        // Ki - have your team create an array of the swatches with image, swatch, color and color family described below
+        /* 
+        [{
+          "image" : "path/to/image.png",
+          "swatch" : "path/to/swatch.png" "#ff0000"
+          "color" : "Crimson",
+          "color_family" : "Red"
+        },...]
+        */
+        $this->setRecordValue('swatch_json', $swatches);
+    }
+    
+    protected function addBadges($product) {
+        // Ki - have your team update this to include the HTML for badges from the Amasty Product Labels module.
+        $badgeBlock = $this->layoutInterface->createBlock("\Magento\Amasty\ProductLabel")->setData('product', $product);
+        $this->setRecordValue('badge_html', $badgeBlock->getHtml());
+    }
+
 
     protected function addPricesToRecord($product) {
         $finalPrice = $product->getPriceInfo()->getPrice('final_price')->getMinimalPrice()->getValue();
