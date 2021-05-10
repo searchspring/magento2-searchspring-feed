@@ -27,8 +27,6 @@ use \Magento\Catalog\Model\CategoryRepository as CategoryRepository;
 use \Magento\Catalog\Model\Product\Gallery\ReadHandler as GalleryReadHandler;
 use \Magento\Catalog\Model\Product\OptionFactory as ProductOptionFactory;
 use \Magento\Catalog\Model\ResourceModel\Product\CollectionFactory as ProductCollectionFactory;
-use \Magento\Customer\Model\CustomerFactory as CustomerFactory;
-use \Magento\Customer\Model\SessionFactory as SessionFactory;
 use \Magento\Catalog\Model\ResourceModel\Eav\Attribute as AttributeFactory;
 use \Magento\CatalogInventory\Api\StockRegistryInterface as StockRegistryInterface;
 use \Magento\CatalogInventory\Helper\Stock as StockFilter;
@@ -47,9 +45,7 @@ use \Magento\ConfigurableProduct\Model\Product\Type\Configurable as Configurable
 use \Magento\GroupedProduct\Model\Product\Type\Grouped as Grouped;
 
 class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
-    const CSV_FORMAT = 'csv';
-    const JSON_FORMAT = 'json';
-    
+
     protected $productRecord = array();
     protected $categoryCache = array();
     protected $fields = array();
@@ -61,8 +57,6 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
     protected $productCollectionFactory;
     protected $productOptionFactory;
-    protected $customerFactory;
-    protected $sessionFactory;
     protected $productRepositoryInterface;
     protected $productVisibility;
     protected $stockItemRepository;
@@ -98,8 +92,6 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     protected $includeChildPrices = false;
     protected $includeTierPricing = false;
 
-    protected $customerId;
-
     // Extra image types to include, by default we only include product_thumbnail_image
     protected $imageTypes = array();
 
@@ -116,7 +108,6 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
     protected $filename = '';
     protected $feedPath;
-    protected $feedFormat = self::CSV_FORMAT;
 
     protected $tmpFile;
     protected $tmpFilename;
@@ -128,8 +119,6 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         ProductVisibility $productVisibility,
         ProductOptionFactory $productOptionFactory,
         ProductCollectionFactory $productCollectionFactory,
-        CustomerFactory $customerFactory,
-        SessionFactory $sessionFactory,
         ProductRepositoryInterface $productRepository,
         StockItemRepository $stockItemRepository,
         ImageHelper $productImageHelper,
@@ -179,7 +168,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         if($this->page == 0) {
             $this->page = 1;
         }
-
+        
         $this->thumbWidth  = $this->request->getParam('thumbWidth', 250);
         $this->thumbHeight = $this->request->getParam('thumbHeight', 250);
         $this->keepAspectRatio = $this->request->getParam('keepAspectRatio', 1);
@@ -193,8 +182,6 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->includeJSONConfig = $this->request->getParam('includeJSONConfig', 0);
         $this->includeChildPrices = $this->request->getParam('includeChildPrices', 0);
         $this->includeTierPricing = $this->request->getParam('includeTierPricing', 0);
-
-        $this->customerId = $this->request->getParam('customerId');
 
         $this->imageTypes = $this->request->getParam('imageTypes', array());
 
@@ -228,10 +215,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             throw new \Exception('Invalid filename: ' . $filename);
         }
 
-        $this->feedFormat = $this->request->getParam('format', self::CSV_FORMAT);
-
         $this->feedPath = $this->request->getParam('path', $directoryList->getPath('media') . '/searchspring');
-        $this->tmpFilename = 'searchspring-' . $this->storeId . ($filename ? '-' . $filename : '') . '.tmp.' . $this->feedFormat;
+        $this->tmpFilename = 'searchspring-' . $this->storeId . ($filename ? '-' . $filename : '') . '.tmp.csv';
 
         if(!is_dir($this->feedPath)) {
             mkdir($this->feedPath, 0755, true);
@@ -240,17 +225,64 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         // TODO explore using CSV writer built into Magento, it looks like it can only write whole file and not append
         $this->tmpFile = fopen($this->feedPath . '/' . $this->tmpFilename, 'a');
 
-        // If a customerId is passed act as a certain user for product/category permissions
-        if($this->customerId) {
-            // Load customer based upon ID
-            $customer = $customerFactory->create()->load($this->customerId);
-
-            // Create session
-            $sessionManager = $sessionFactory->create();
-
-            // Log in as customer
-            $sessionManager->setCustomerAsLoggedIn($customer);
-        }
+        $this->whitelistFields = array(
+            "accessories",
+            "amps",
+            "application",
+            "available_on_hand",
+            "backsplash",
+            "btu",
+            "burners",
+            "burner_qty",
+            "burn_time",
+            "cached_thumbnail",
+            "call_price",
+            "casters",
+            "category_hierarchy",
+            "child_sku",
+            "coating",
+            "color",
+            "construction",
+            "depth",
+            "design",
+            "diameter",
+            "entity_id",
+            "final_price",
+            "finish",
+            "free_shipping",
+            "handle",
+            "height",
+            "internal_id",
+            "list_price",
+            "login_price",
+            "manufacturer",
+            "map_price",
+            "material",
+            "name",
+            "plate_thickness",
+            "price",
+            "price_rules",
+            "productid",
+            "quick_ship",
+            "rating",
+            "rating_count",
+            "refrigeration",
+            "sections",
+            "shape",
+            "shelves",
+            "size",
+            "sku",
+            "stainless_gauge",
+            "style",
+            "thumbnail",
+            "top_gauge",
+            "type",
+            "url",
+            "vendor_sku",
+            "visibility",
+            "weight",
+            "width"
+        );
     }
 
     public function generate()
@@ -260,13 +292,10 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             exit;
         }
 
-        // Only need all fields for CSV format
-        if($this->feedFormat == self::CSV_FORMAT) {
-            $this->getFields();
+        $this->getFields();
 
-            if($this->page == 1) {
-                $this->writeHeader();
-            }
+        if($this->page == 1) {
+            $this->writeHeader();
         }
 
         $collection = $this->getProductCollection();
@@ -275,7 +304,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             $this->productRecord = array();
             $this->addProductAttributesToRecord($product);
             $this->addChildAttributesToRecord($product);
-            $this->addOptionsToRecord($product);
+//            $this->addOptionsToRecord($product);
             $this->addImagesToRecord($product);
             $this->addStockInfoToRecord($product);
             $this->addCategoriesToRecord($product);
@@ -330,7 +359,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     }
 
     protected function moveFeed() {
-        $filename = 'searchspring-' . $this->storeId . '.' . $this->feedFormat;
+        $filename = 'searchspring-' . $this->storeId . '.csv';
         rename($this->feedPath . '/' . $this->tmpFilename, $this->feedPath . '/' . $filename);
     }
 
@@ -345,7 +374,6 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             ->addAttributeToFilter(
                 'status', array('eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED)
             )
-            ->setOrder('entity_id','ASC')
             ->setPageSize($this->count)
             ->setCurPage($this->page);
 
@@ -361,6 +389,9 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
         foreach($attributes as $attribute) {
             $code = $attribute->getAttributeCode();
+            if(!in_array($code, $this->whitelistFields)) {
+                continue;
+            }
             $value = $this->getProductAttribute($product, $attribute);
             $this->setRecordValue($code, $value);
         }
@@ -739,17 +770,20 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $attributes->addFieldToFilter('entity_type_id', $this->productEntityTypeId);
         foreach($attributes as $attribute) {
             $field = $attribute->getAttributeCode();
+            if(!in_array($field, $this->whitelistFields)) {
+                continue;
+            }
             $this->fields[] = $field;
         }
 
 
-        $options = $this->productOptionFactory->create()
-                        ->getCollection()
-                        ->addTitleToResult($this->storeId);
+//        $options = $this->productOptionFactory->create()
+//                        ->getCollection()
+//                        ->addTitleToResult($this->storeId);
 
-        foreach($options as $option) {
-            $this->fields[] = 'option_' . $this->textToFieldName($option->getTitle());
-        }
+//        foreach($options as $option) {
+//            $this->fields[] = 'option_' . $this->textToFieldName($option->getTitle());
+//        }
 
         // Remove ignored fields
         $this->fields = array_unique(array_diff($this->fields, $this->ignoreFields));
@@ -785,22 +819,6 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     }
 
     protected function writeRecord() {
-        if($this->feedFormat == self::CSV_FORMAT) {
-            $this->writeCsvRecord();
-        } else if($this->feedFormat == self::JSON_FORMAT) {
-            $this->writeJsonRecord();
-        }
-    }
-
-    protected function writeJsonRecord() {
-        foreach($this->ignoreFields as $field) {
-            unset($this->productRecord[$field]);
-        }
-        
-        fwrite($this->tmpFile, json_encode($this->productRecord) . "\n");
-    }
-
-    protected function writeCsvRecord() {
         $row = array();
         foreach($this->fields as $field) {
             if(isset($this->productRecord[$field])) {
