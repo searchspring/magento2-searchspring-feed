@@ -675,6 +675,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $regularPrice = $product->getPriceInfo()->getPrice('regular_price')->getValue();
         $this->setRecordValue('regular_price', $regularPrice);
 
+        $maxPrice = $product->getPriceInfo()->getPrice('final_price')->getMaximalPrice()->getValue();
+        $this->setRecordValue('max_price', $maxPrice);
 
         if($this->includeTierPricing) {
             $tierPrice = $product->getTierPrice();
@@ -700,6 +702,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             'url',
             'final_price',
             'regular_price',
+            'max_price',
             'rating',
             'rating_count',
             'child_sku',
