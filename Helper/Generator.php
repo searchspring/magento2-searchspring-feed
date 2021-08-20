@@ -415,6 +415,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                 'status', array('eq' => \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_ENABLED)
             );
 
+            $this->stockFilter->addInStockFilterToCollection($children);
+
             foreach($children as $child) {
                 foreach($childAttributes as $childAttribute) {
                     $code = $childAttribute->getAttributeCode();
@@ -444,6 +446,9 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             }
 
             $children = $product->getTypeInstance()->getAssociatedProducts($product);
+        
+            $this->stockFilter->addInStockFilterToCollection($children);
+            
             foreach($children as $child) {
                 // If we're pulling non-configurable attributes we need to load the full child product
                 if(sizeof($this->childFields) > 0) {
