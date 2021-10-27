@@ -428,6 +428,9 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                 $this->setRecordValue('child_sku', $child->getSku());
                 $this->setRecordValue('child_name', $child->getName());
 
+                $stockItem = $this->stockRegistryInterface->getStockItem($child->getId());
+                $this->setRecordValue('child_inventory_map', $child->getId() . ":" . $stockItem->isInStock());
+                
                 if($this->includeChildPrices) {
                     $price = $child->getPriceInfo()->getPrice('final_price')->getMinimalPrice()->getValue();
                     $this->setRecordValue('child_final_price', $price);
