@@ -96,6 +96,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
     protected $includeJSONConfig = false;
     protected $includeChildPrices = false;
+    protected $includeChildInventoryMap = false;
     protected $includeTierPricing = false;
 
     protected $customerId;
@@ -193,6 +194,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->includeJSONConfig = $this->request->getParam('includeJSONConfig', 0);
         $this->includeChildPrices = $this->request->getParam('includeChildPrices', 0);
         $this->includeTierPricing = $this->request->getParam('includeTierPricing', 0);
+        $this->includeChildInventoryMap = $this->request->getParam('includeChildInventoryMap', 0);
 
         $this->customerId = $this->request->getParam('customerId');
 
@@ -428,8 +430,10 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                 $this->setRecordValue('child_sku', $child->getSku());
                 $this->setRecordValue('child_name', $child->getName());
 
-                $stockItem = $this->stockRegistryInterface->getStockItem($child->getId());
-                $this->setRecordValue('child_inventory_map', $child->getId() . ":" . $stockItem->isInStock());
+                if($this->includeChildInventoryMap) {
+                    $stockItem = $this->stockRegistryInterface->getStockItem($child->getId());
+                    $this->setRecordValue('child_inventory_map', $child->getId() . ":" . $stockItem->getIsInStock());
+                }
                 
                 if($this->includeChildPrices) {
                     $price = $child->getPriceInfo()->getPrice('final_price')->getMinimalPrice()->getValue();
@@ -460,6 +464,11 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
                 $this->setRecordValue('child_sku', $child->getSku());
                 $this->setRecordValue('child_name', $child->getName());
+                
+                if($this->includeChildInventoryMap) {
+                    $stockItem = $this->stockRegistryInterface->getStockItem($child->getId());
+                    $this->setRecordValue('child_inventory_map', $child->getId() . ":" . $stockItem->getIsInStock());
+                }
 
                 if($this->includeChildPrices) {
                     $price = $child->getPriceInfo()->getPrice('final_price')->getMinimalPrice()->getValue();
@@ -722,6 +731,10 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
         if($this->includeChildPrices) {
             $this->fields[] = 'child_final_price';
+        }
+        
+        if($this->includeChildInventoryMap) {
+            $this->fields[] = 'child_inventory_map';
         }
 
         if($this->includeJSONConfig) {
