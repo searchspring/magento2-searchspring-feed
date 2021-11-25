@@ -42,6 +42,7 @@ use \Magento\Eav\Model\Config as EavConfig;
 use \Magento\Store\Model\StoreManagerInterface as StoreManagerInterface;
 
 use \Magento\Review\Model\RatingFactory as RatingFactory;
+use \Magento\Review\Model\ReviewFactory as ReviewFactory;
 
 use \Magento\ConfigurableProduct\Model\Product\Type\Configurable as Configurable;
 use \Magento\GroupedProduct\Model\Product\Type\Grouped as Grouped;
@@ -145,6 +146,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         CategoryRepository $categoryRepository,
         AttributeFactory $attributeFactory,
         RatingFactory $ratingFactory,
+        ReviewFactory $reviewFactory,
         StockFilter $stockFilter,
         StockRegistryInterface $stockRegistryInterface,
         LayoutInterface $layoutInterface,
@@ -167,6 +169,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->categoryRepository = $categoryRepository;
         $this->attributeFactory = $attributeFactory;
         $this->ratingFactory = $ratingFactory;
+        $this->reviewFactory = $reviewFactory;
         $this->stockFilter = $stockFilter;
         $this->stockRegistryInterface = $stockRegistryInterface;
         $this->layoutInterface = $layoutInterface;
@@ -674,11 +677,13 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     }
 
     protected function addRatingsToRecord($product) {
-        $rating = $this->ratingFactory->create()->getEntitySummary($product->getId(), $this->storeId);
+        // $rating = $this->ratingFactory->create()->getEntitySummary($product->getId(), $this->storeId);
+        $rating = $reviewFactory->create()->getEntitySummary($product, $this->storeId);
+        $ratingSummary = $product->getRatingSummary();
 
-        if($rating && $rating->getCount() > 0) {
-            $this->setRecordValue('rating', 5 * ($rating->getSum() / $rating->getCount()/100));
-            $this->setRecordValue('rating_count', $rating->getCount());
+        if($ratingSummary && $ratingSummary->getReviewsCount() > 0) {
+            $this->setRecordValue('rating', 5 * ($ratingSummary->getRatingSummary()/100));
+            $this->setRecordValue('rating_count', $ratingSummary->getReviewsCount());
         }
     }
 
