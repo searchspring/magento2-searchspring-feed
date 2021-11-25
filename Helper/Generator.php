@@ -49,7 +49,7 @@ use \Magento\GroupedProduct\Model\Product\Type\Grouped as Grouped;
 class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     const CSV_FORMAT = 'csv';
     const JSON_FORMAT = 'json';
-    
+
     protected $productRecord = array();
     protected $categoryCache = array();
     protected $fields = array();
@@ -98,6 +98,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
     protected $includeChildPrices = false;
     protected $includeTierPricing = false;
 
+    protected $disableRatings = false;
+
     protected $customerId;
 
     // Extra image types to include, by default we only include product_thumbnail_image
@@ -120,6 +122,13 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
     protected $tmpFile;
     protected $tmpFilename;
+
+    protected $blackList = array(
+        'commissioning_category',
+        'page_layout',
+        'custom_layout',
+        'cross_domain_store'
+    );
 
     public function __construct(
         RequestHttp $request,
@@ -193,13 +202,15 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->includeJSONConfig = $this->request->getParam('includeJSONConfig', 0);
         $this->includeChildPrices = $this->request->getParam('includeChildPrices', 0);
         $this->includeTierPricing = $this->request->getParam('includeTierPricing', 0);
+        $this->disableRatings = $this->request->getParam('disableRatings', 0);
+
 
         $this->customerId = $this->request->getParam('customerId');
 
         $this->imageTypes = $this->request->getParam('imageTypes', array());
 
         if(!is_array($this->imageTypes)) {
-          throw new \Exception('Image types must be an array. Example: imageTypes[]=product_small_image');
+            throw new \Exception('Image types must be an array. Example: imageTypes[]=product_small_image');
         }
 
         $this->includeMediaGallery = $this->request->getParam('includeMediaGallery', 0);
@@ -209,7 +220,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->childFields = $this->request->getParam('childFields', array());
 
         if(!is_array($this->childFields)) {
-          throw new \Exception('Child fields must be an array. Example: childFields[]=color_family');
+            throw new \Exception('Child fields must be an array. Example: childFields[]=color_family');
         }
 
         $this->includeOutOfStock = $this->request->getParam('includeOutOfStock', 0);
@@ -217,13 +228,13 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->ignoreFields = $this->request->getParam('ignoreFields', array());
 
         if(!is_array($this->ignoreFields)) {
-          throw new \Exception('Ignore fields must be an array. Example: ignoreFields[]=description');
+            throw new \Exception('Ignore fields must be an array. Example: ignoreFields[]=description');
         }
 
         $this->showInfo = $this->request->getParam('showInfo', 0);
 
         $filename = $this->request->getParam('filename', '');
-        
+
         if(!preg_match('/^[a-z0-9]+$/i', $filename)) {
             throw new \Exception('Invalid filename: ' . $filename);
         }
@@ -255,6 +266,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
     public function generate()
     {
+
         if($this->showInfo) {
             $this->displayInfo();
             exit;
@@ -279,7 +291,11 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             $this->addImagesToRecord($product);
             $this->addStockInfoToRecord($product);
             $this->addCategoriesToRecord($product);
-            $this->addRatingsToRecord($product);
+
+            if(!$this->disableRatings) {
+                $this->addRatingsToRecord($product);
+            }
+
             $this->addPricesToRecord($product);
 
             if($this->includeJSONConfig) {
@@ -361,6 +377,13 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
         foreach($attributes as $attribute) {
             $code = $attribute->getAttributeCode();
+
+            if(in_array($code, $this->blackList)) {
+                continue;
+            }
+
+            $start = microtime(true);
+
             $value = $this->getProductAttribute($product, $attribute);
             $this->setRecordValue($code, $value);
         }
@@ -652,6 +675,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
     protected function addRatingsToRecord($product) {
         $rating = $this->ratingFactory->create()->getEntitySummary($product->getId(), $this->storeId);
+
         if($rating && $rating->getCount() > 0) {
             $this->setRecordValue('rating', 5 * ($rating->getSum() / $rating->getCount()/100));
             $this->setRecordValue('rating_count', $rating->getCount());
@@ -747,8 +771,8 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
 
         $options = $this->productOptionFactory->create()
-                        ->getCollection()
-                        ->addTitleToResult($this->storeId);
+            ->getCollection()
+            ->addTitleToResult($this->storeId);
 
         foreach($options as $option) {
             $this->fields[] = 'option_' . $this->textToFieldName($option->getTitle());
@@ -799,7 +823,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         foreach($this->ignoreFields as $field) {
             unset($this->productRecord[$field]);
         }
-        
+
         fwrite($this->tmpFile, json_encode($this->productRecord) . "\n");
     }
 
