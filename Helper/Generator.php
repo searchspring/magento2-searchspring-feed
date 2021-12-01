@@ -678,7 +678,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
 
     protected function addRatingsToRecord($product) {
         // $rating = $this->ratingFactory->create()->getEntitySummary($product->getId(), $this->storeId);
-        $rating = $reviewFactory->create()->getEntitySummary($product, $this->storeId);
+        $rating = $this->reviewFactory->create()->getEntitySummary($product, $this->storeId);
         $ratingSummary = $product->getRatingSummary();
 
         if($ratingSummary && $ratingSummary->getReviewsCount() > 0) {
