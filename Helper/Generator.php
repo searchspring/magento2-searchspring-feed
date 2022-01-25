@@ -11,12 +11,12 @@
 
 namespace SearchSpring\Feed\Helper;
 
-use \Magento\Framework\AppInterface as AppInterface;
-use \Magento\Framework\App\Http as Http;
+use Magento\Catalog\Model\Product;
 
 use \Magento\Framework\App\Request\Http as RequestHttp;
 use \Magento\Framework\App\Response\Http as ResponseHttp;
 use \Magento\Framework\App\State as State;
+use Magento\Framework\Phrase;
 use \Magento\Framework\View\Config as ViewConfig;
 
 use \Magento\Catalog\Api\ProductRepositoryInterface as ProductRepositoryInterface;
@@ -46,30 +46,23 @@ use \Magento\Review\Model\RatingFactory as RatingFactory;
 use \Magento\ConfigurableProduct\Model\Product\Type\Configurable as Configurable;
 use \Magento\GroupedProduct\Model\Product\Type\Grouped as Grouped;
 
-class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
+class Generator extends \Magento\Framework\App\Helper\AbstractHelper{
     const CSV_FORMAT = 'csv';
     const JSON_FORMAT = 'json';
-    
-    protected $productRecord = array();
+
     protected $categoryCache = array();
     protected $fields = array();
 
-    protected $objectManager;
     protected $request;
     protected $response;
-    protected $state;
 
     protected $productCollectionFactory;
     protected $productOptionFactory;
-    protected $customerFactory;
-    protected $sessionFactory;
-    protected $productRepositoryInterface;
     protected $productVisibility;
     protected $stockItemRepository;
     protected $productImageHelper;
     protected $categoryRepository;
     protected $attributeFactory;
-    protected $rating;
     protected $stockFilter;
     protected $stockRegistryInterface;
     protected $layoutInterface;
@@ -168,7 +161,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->eavConfig = $eavConfig;
         $this->viewConfig = $viewConfig;
 
-        $this->productEntityTypeId = $this->eavConfig->getEntityType(\Magento\Catalog\Model\Product::ENTITY)->getEntityTypeId();
+        $this->productEntityTypeId = $this->eavConfig->getEntityType(Product::ENTITY)->getEntityTypeId();
 
         $this->storeId = $this->request->getParam('store', 'default');
         $this->storeManager->setCurrentStore($this->storeId);
@@ -223,7 +216,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $this->showInfo = $this->request->getParam('showInfo', 0);
 
         $filename = $this->request->getParam('filename', '');
-        
+
         if(!preg_match('/^[a-z0-9]+$/i', $filename)) {
             throw new \Exception('Invalid filename: ' . $filename);
         }
@@ -272,24 +265,24 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         $collection = $this->getProductCollection();
 
         foreach($collection as $product) {
-            $this->productRecord = array();
-            $this->addProductAttributesToRecord($product);
-            $this->addChildAttributesToRecord($product);
-            $this->addOptionsToRecord($product);
-            $this->addImagesToRecord($product);
-            $this->addStockInfoToRecord($product);
-            $this->addCategoriesToRecord($product);
-            $this->addRatingsToRecord($product);
-            $this->addPricesToRecord($product);
+            $productRecord = array();
+            Generator::addProductAttributesToRecord($product, $productRecord, $this->ignoreFields);
+            $this->addChildAttributesToRecord($product, $productRecord);
+            $this->addOptionsToRecord($product, $productRecord);
+            $this->addImagesToRecord($product, $productRecord);
+            $this->addStockInfoToRecord($product, $productRecord);
+            $this->addCategoriesToRecord($product, $productRecord);
+            $this->addRatingsToRecord($product, $productRecord);
+            $this->addPricesToRecord($product, $productRecord, $this->ignoreFields, $this->includeTierPricing);
 
             if($this->includeJSONConfig) {
-                $this->addJSONConfig($product);
+                $this->addJSONConfig($product, $productRecord);
             }
 
-            $this->setRecordValue('saleable', $product->isSaleable());
-            $this->setRecordValue('url', $product->getProductUrl());
+            Generator::setRecordValue($productRecord,'saleable', $product->isSaleable(),$this->ignoreFields);
+            Generator::setRecordValue($productRecord,'url', $product->getProductUrl(),$this->ignoreFields);
 
-            $this->writeRecord();
+            $this->writeRecord($productRecord);
         }
 
         // Check if we're on last page
@@ -334,8 +327,6 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         rename($this->feedPath . '/' . $this->tmpFilename, $this->feedPath . '/' . $filename);
     }
 
-
-
     protected function getProductCollection() {
         $collection = $this->productCollectionFactory->create()
             ->addAttributeToSelect('*')
@@ -356,17 +347,18 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         return $collection;
     }
 
-    protected function addProductAttributesToRecord($product) {
+    public static function addProductAttributesToRecord($product, &$productRecord,$ignoreFields) {
         $attributes = $product->getAttributes();
 
         foreach($attributes as $attribute) {
             $code = $attribute->getAttributeCode();
-            $value = $this->getProductAttribute($product, $attribute);
-            $this->setRecordValue($code, $value);
+            $value = Generator::getProductAttribute($product, $attribute);
+            Generator::setRecordValue($productRecord,$code, $value,$ignoreFields);
         }
     }
 
-    protected function getProductAttribute($product, $attribute) {
+    public static function getProductAttribute($product, $attribute)
+    {
         $code = $attribute->getAttributeCode();
         if($attribute->usesSource()) {
             $value = $product->getAttributeText($code);
@@ -375,7 +367,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         }
 
         if(is_object($value)) {
-            if($value instanceof \Magento\Framework\Phrase) {
+            if($value instanceof Phrase) {
                 $value = $value->getText();
             } else {
                 throw new \Exception("Unknown value object type " . get_class($value));
@@ -385,7 +377,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         return $value;
     }
 
-    protected function addChildAttributesToRecord($product) {
+    protected function addChildAttributesToRecord($product, &$productRecord) {
         if(Configurable::TYPE_CODE === $product->getTypeId()) {
             $childAttributes = array();
 
@@ -419,18 +411,18 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                 foreach($childAttributes as $childAttribute) {
                     $code = $childAttribute->getAttributeCode();
                     $value = $this->getProductAttribute($child, $childAttribute);
-                    $this->setRecordValue($code, $value);
+                    Generator::setRecordValue($productRecord,$code, $value,$this->ignoreFields);
                 }
 
                 // NOTE We're not using child_qty anymore as that should be
                 // taken care of by saleable. If there is a need adding it here
                 // should be easy.
-                $this->setRecordValue('child_sku', $child->getSku());
-                $this->setRecordValue('child_name', $child->getName());
+                Generator::setRecordValue($productRecord,'child_sku', $child->getSku(),$this->ignoreFields);
+                Generator::setRecordValue($productRecord,'child_name', $child->getName(),$this->ignoreFields);
 
                 if($this->includeChildPrices) {
                     $price = $child->getPriceInfo()->getPrice('final_price')->getMinimalPrice()->getValue();
-                    $this->setRecordValue('child_final_price', $price);
+                    Generator::setRecordValue($productRecord,'child_final_price', $price,$this->ignoreFields);
                 }
             }
         }
@@ -451,22 +443,22 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                     foreach($childAttributes as $childAttribute) {
                         $code = $childAttribute->getAttributeCode();
                         $value = $this->getProductAttribute($child, $childAttribute);
-                        $this->setRecordValue($code, $value);
+                        Generator::setRecordValue($productRecord,$code, $value,$this->ignoreFields);
                     }
                 }
 
-                $this->setRecordValue('child_sku', $child->getSku());
-                $this->setRecordValue('child_name', $child->getName());
+                Generator::setRecordValue($productRecord,'child_sku', $child->getSku(),$this->ignoreFields);
+                Generator::setRecordValue($productRecord,'child_name', $child->getName(),$this->ignoreFields);
 
                 if($this->includeChildPrices) {
                     $price = $child->getPriceInfo()->getPrice('final_price')->getMinimalPrice()->getValue();
-                    $this->setRecordValue('child_final_price', $price);
+                    Generator::setRecordValue($productRecord,'child_final_price', $price,$this->ignoreFields);
                 }
             }
         };
     }
 
-    protected function addOptionsToRecord($product) {
+    protected function addOptionsToRecord($product, &$productRecord) {
         $options = $this->productOptionFactory->create()->getProductOptionCollection($product);
         foreach($options as $option) {
             // Add drop down options to data
@@ -476,17 +468,17 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                 $values = $option->getValues();
                 if($values) {
                     foreach($values as $value) {
-                        $this->setRecordValue($field, $value->getTitle());
+                        Generator::setRecordValue($productRecord,$field, $value->getTitle(),$this->ignoreFields);
                     }
                 }
             }
         }
     }
 
-    protected function addImagesToRecord($product) {
-        $this->setRecordValue('cached_thumbnail', $this->getThumbnail($product));
+    protected function addImagesToRecord($product, &$productRecord) {
+        Generator::setRecordValue($productRecord,'cached_thumbnail', $this->getThumbnail($product),$this->ignoreFields);
         foreach($this->imageTypes as $type) {
-            $this->setRecordValue('cached_'.$type, $this->getThumbnail($product, $type));
+            Generator::setRecordValue($productRecord,'cached_'.$type, $this->getThumbnail($product, $type),$this->ignoreFields);
         }
 
         if($this->includeMediaGallery) {
@@ -504,7 +496,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
                 }
             }
 
-            $this->setRecordValue('media_gallery_json', json_encode($mediaGallery));
+            Generator::setRecordValue($productRecord,'media_gallery_json', json_encode($mediaGallery),$this->ignoreFields);
         }
     }
 
@@ -530,13 +522,13 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         return $resizedImage;
     }
 
-    protected function addStockInfoToRecord($product) {
+    protected function addStockInfoToRecord($product,&$productRecord) {
         $stockItem = $this->stockRegistryInterface->getStockItem($product->getId());
-        $this->setRecordValue('in_stock', $stockItem->getIsInStock());
-        $this->setRecordValue('stock_qty', $stockItem->getQty());
+        Generator::setRecordValue($productRecord,'in_stock', $stockItem->getIsInStock(),$this->ignoreFields);
+        Generator::setRecordValue($productRecord,'stock_qty', $stockItem->getQty(),$this->ignoreFields);
     }
 
-    protected function addCategoriesToRecord($product) {
+    protected function addCategoriesToRecord($product,&$productRecord) {
         $categoryIds = $product->getCategoryIds();
 
         $categoryNames = array();
@@ -576,16 +568,16 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             }
         }
 
-        $this->setRecordValue('categories', $categoryNames);
-        $this->setRecordValue('category_ids', $categoryIds);
-        $this->setRecordValue('category_hierarchy', array_unique($categoryHierarchy));
+        Generator::setRecordValue($productRecord,'categories', $categoryNames,$this->ignoreFields);
+        Generator::setRecordValue($productRecord,'category_ids', $categoryIds,$this->ignoreFields);
+        Generator::setRecordValue($productRecord,'category_hierarchy', array_unique($categoryHierarchy),$this->ignoreFields);
 
         if($this->includeMenuCategories) {
-            $this->setRecordValue('menu_hierarchy', array_unique($menuHierarchy));
+            Generator::setRecordValue($productRecord,'menu_hierarchy', array_unique($menuHierarchy),$this->ignoreFields);
         }
 
         if($this->includeUrlHierarchy) {
-            $this->setRecordValue('url_hierarchy', array_unique($urlHierarchy));
+            Generator::setRecordValue($productRecord,'url_hierarchy', array_unique($urlHierarchy),$this->ignoreFields);
         }
     }
 
@@ -650,37 +642,38 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         return $this->categoryCache[$categoryId];
     }
 
-    protected function addRatingsToRecord($product) {
+    protected function addRatingsToRecord($product, &$productRecord) {
         $rating = $this->ratingFactory->create()->getEntitySummary($product->getId(), $this->storeId);
         if($rating && $rating->getCount() > 0) {
-            $this->setRecordValue('rating', 5 * ($rating->getSum() / $rating->getCount()/100));
-            $this->setRecordValue('rating_count', $rating->getCount());
+            Generator::setRecordValue($productRecord,'rating', 5 * ($rating->getSum() / $rating->getCount()/100),$this->ignoreFields);
+            Generator::setRecordValue($productRecord,'rating_count', $rating->getCount(),$this->ignoreFields);
         }
     }
 
-    protected function addJSONConfig($product) {
+    protected function addJSONConfig($product, &$productRecord) {
         if(Configurable::TYPE_CODE === $product->getTypeId()) {
             $configBlock = $this->layoutInterface->createBlock("\Magento\ConfigurableProduct\Block\Product\View\Type\Configurable")->setData('product', $product);
-            $this->setRecordValue('json_config', $configBlock->getJsonConfig());
+            Generator::setRecordValue($productRecord,'json_config', $configBlock->getJsonConfig(),$this->ignoreFields);
 
             $swatchBlock = $this->layoutInterface->createBlock("\Magento\Swatches\Block\Product\Renderer\Configurable")->setData('product', $product);
-            $this->setRecordValue('swatch_json_config', $swatchBlock->getJsonSwatchConfig());
+            Generator::setRecordValue($productRecord,'swatch_json_config', $swatchBlock->getJsonSwatchConfig(),$this->ignoreFields);
         }
     }
 
-    protected function addPricesToRecord($product) {
+    public static function addPricesToRecord($product, &$productRecord, $ignoreFields, $includeTierPricing) {
         $finalPrice = $product->getPriceInfo()->getPrice('final_price')->getMinimalPrice()->getValue();
-        $this->setRecordValue('final_price', $finalPrice);
+        Generator::setRecordValue($productRecord,'final_price', $finalPrice,$ignoreFields);
 
         $regularPrice = $product->getPriceInfo()->getPrice('regular_price')->getValue();
-        $this->setRecordValue('regular_price', $regularPrice);
+        echo $regularPrice;
+        Generator::setRecordValue($productRecord,'regular_price', $regularPrice,$ignoreFields);
 
         $maxPrice = $product->getPriceInfo()->getPrice('final_price')->getMaximalPrice()->getValue();
-        $this->setRecordValue('max_price', $maxPrice);
+        Generator::setRecordValue($productRecord,'max_price', $maxPrice,$ignoreFields);
 
-        if($this->includeTierPricing) {
+        if($includeTierPricing) {
             $tierPrice = $product->getTierPrice();
-            $this->setRecordValue('tier_pricing', json_encode($tierPrice));
+            Generator::setRecordValue($productRecord,'tier_pricing', json_encode($tierPrice),$ignoreFields);
 
         }
     }
@@ -762,24 +755,24 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         return strtolower(preg_replace('/_+/', '_', preg_replace('/[^a-z0-9_]+/i', '_', trim($text))));
     }
 
-    protected function setRecordValue($field, $value) {
-        if(in_array($field, $this->ignoreFields)) {
+    public static function setRecordValue(&$productRecord, $field, $value, $ignoreFields){
+        if(in_array($field, $ignoreFields)) {
             return;
         }
 
         // Don't bother adding if the value is empty
-        if(is_null($value) || $value == array() || $value == '') {
+        if($value == array() || $value == '') {
             return;
         }
 
-        if(!isset($this->productRecord[$field])) {
-            $this->productRecord[$field] = array();
+        if(!isset($productRecord[$field])) {
+            $productRecord[$field] = array();
         }
 
         if(!is_array($value)) {
-            $this->productRecord[$field][] = $value;
+            $productRecord[$field][] = $value;
         } else {
-            $this->productRecord[$field] = array_merge($this->productRecord[$field], $value);
+            $productRecord[$field] = array_merge($productRecord[$field], $value);
         }
     }
 
@@ -787,27 +780,27 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         fputcsv($this->tmpFile, $this->fields);
     }
 
-    protected function writeRecord() {
+    protected function writeRecord($productRecord) {
         if($this->feedFormat == self::CSV_FORMAT) {
-            $this->writeCsvRecord();
+            $this->writeCsvRecord($productRecord);
         } else if($this->feedFormat == self::JSON_FORMAT) {
-            $this->writeJsonRecord();
+            $this->writeJsonRecord($productRecord);
         }
     }
 
-    protected function writeJsonRecord() {
+    protected function writeJsonRecord($productRecord) {
         foreach($this->ignoreFields as $field) {
             unset($this->productRecord[$field]);
         }
-        
-        fwrite($this->tmpFile, json_encode($this->productRecord) . "\n");
+
+        fwrite($this->tmpFile, json_encode($productRecord) . "\n");
     }
 
-    protected function writeCsvRecord() {
+    protected function writeCsvRecord($productRecord) {
         $row = array();
         foreach($this->fields as $field) {
-            if(isset($this->productRecord[$field])) {
-                $value = $this->productRecord[$field];
+            if(isset($productRecord[$field])) {
+                $value = $productRecord[$field];
                 // If value is an array of arrays or objects then json encode value
                 if(is_array(current($value)) || is_object(current($value))) {
                     $row[]  = json_encode($value);

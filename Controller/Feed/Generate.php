@@ -11,18 +11,25 @@
 
 namespace SearchSpring\Feed\Controller\Feed;
 
-class Generate extends \Magento\Framework\App\Action\Action
+use Magento\Framework\App\Action\Action;
+use Magento\Framework\App\Action\Context;
+use Magento\Framework\Controller\ResultInterface;
+use SearchSpring\Feed\Helper\Generator;
+
+class Generate extends Action
 {
 
     protected $generator;
+
     /**
      * Constructor
      *
-     * @param \Magento\Framework\App\Action\Context  $context
+     * @param Context $context
+     * @param Generator $generator
      */
     public function __construct(
-        \Magento\Framework\App\Action\Context $context,
-        \SearchSpring\Feed\Helper\Generator $generator
+        Context $context,
+        Generator $generator
     ) {
         parent::__construct($context);
         $this->generator = $generator;
@@ -31,7 +38,7 @@ class Generate extends \Magento\Framework\App\Action\Action
     /**
      * Execute view action
      *
-     * @return \Magento\Framework\Controller\ResultInterface
+     * @return ResultInterface
      */
     public function execute()
     {
