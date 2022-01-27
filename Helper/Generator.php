@@ -167,9 +167,13 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper{
         $this->storeManager->setCurrentStore($this->storeId);
 
         $this->count = $this->request->getParam('count', 100);
-        $this->page = $this->request->getParam('page', 1);
+        $this->page = $this->request->getParam('page');
 
-        if($this->page == 0) {
+        if(is_null($this->page)) {
+            throw new \Exception('Page parameter is required.');
+        }
+
+        if($this->page === "0" || $this->page === 0) {
             $this->page = 1;
         }
 
