@@ -4,6 +4,7 @@
     "type": "magento2-module",
     "version": "1.1.4",
     "license": "GPL-3.0",
+    "test": "vendor/bin/phpunit",
     "authors": [
         {
             "email": "james@searchspring.com",
