@@ -253,7 +253,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper{
     public function generate()
     {
         if($this->showInfo) {
-            $this->displayInfo();
+            $this->showInfo();
             exit;
         }
 
@@ -303,7 +303,12 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper{
         fclose($this->tmpFile);
     }
 
-    protected function displayInfo() {
+    /**
+     * displays debug info
+     * 
+     * Pass an argument to the generator of showInfo=1
+     */
+    protected function showInfo() {
         print "<h1>Stores</h1><ul>";
         $stores = $this->storeManager->getStores();
         foreach($stores as $store) {
@@ -431,6 +436,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper{
             }
         }
 
+        // sets data for child products of group typed products.
         if(Grouped::TYPE_CODE === $product->getTypeId()) {
             foreach($this->childFields as $attribute) {
                 $productAttribute = $this->eavConfig->getAttribute("catalog_product", $attribute);
@@ -585,6 +591,9 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper{
         }
     }
 
+    /**
+     * Precache the category data
+     */
     protected function loadCategory($categoryId, $skipLevels = false) {
         // TODO Ignore root categories? ex. Root Catalog
         // TODO Use a Magento 2 cache instead of a variable that is cleared on page 1.
