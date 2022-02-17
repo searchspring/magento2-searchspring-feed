@@ -669,7 +669,6 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper{
         Generator::setRecordValue($productRecord,'final_price', $finalPrice,$ignoreFields);
 
         $regularPrice = $product->getPriceInfo()->getPrice('regular_price')->getValue();
-        echo $regularPrice;
         Generator::setRecordValue($productRecord,'regular_price', $regularPrice,$ignoreFields);
 
         $maxPrice = $product->getPriceInfo()->getPrice('final_price')->getMaximalPrice()->getValue();
