@@ -74,13 +74,13 @@ class Customer extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     // ##### ROW RANGE/VALIDATION STUFF #####
-    // Parses the row range parameter if it was specified in the request.
-    // Expects two comma seperated integers greater than 0.
-    // Subtracts one from the first value and returns the values in an array.
-    // The first value in the array is the starting index in the customer collection.
-    // The second value in the array is the number of customers to chunk from the start index. 
-    // For example, ?dateRange=10,3 returns [9,3] and creates a chunk starting at 
-    // customer element 9, zero-based, 3 customers large (e.g. [9, 12]).
+    // Row range enables chunking requests for getting customers on the Boost side.
+    // Row Range expects two comma seperated integers greater than 0.
+    // The first number minus one is the start index (zero-based) in the customer collection.
+    // The second number is the number of customers to chunk from the start index. 
+    // For example, &dateRange=1,3 creates a chunk starting at customer element 0 and ending at
+    // customer element 2. And, &dateRange=10,3 creates a chunk starting at customer element 9
+    // and ending at customer element 11. 
     public function getRowRange(){
         if ($this->rowRange != 'All'){
             $result = explode(",", $this->rowRange);
