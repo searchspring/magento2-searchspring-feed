@@ -1,8 +1,12 @@
 # Magento Docker Setup
-Pull the Bitnami docker-compose file, and run it using docker-compose:
+Pull the Bitnami docker-compose file from the bitnami/magento repo.
 ```
 curl -sSL https://raw.githubusercontent.com/bitnami/containers/main/bitnami/magento/docker-compose.yml > docker-compose.yml
+```
+* Note: If you want to be able to access your Magento setup externally, you must update the `docker-compose.yml` file with the appropriate `MAGENTO_HOST` value. This will likely be your public-facing IP address. See [Public Access](#public-access) after proceeding through the setup for information on exposing your server to the public internet.
 
+To start your containers, simply run:
+```
 docker-compose up -d
 ```
 Navigate to http://localhost/admin to check if it works. Default login credentials are:
@@ -97,7 +101,24 @@ php bin/magento module:status SearchSpring_Feed
 
 Confirm that magento is up and running by navigating to http://localhost/admin. 
 
-* Note: If you are presented with an error or a blank screen, rerunning the setup commands again should clear things up. Not gonna say "rerun until it works," but maybe try that a few times. 
+* Note: If you are presented with an error or a blank screen, rerunning the setup commands again should clear things up. Not gonna say "rerun until it works," but maybe try that a few times.
+
+# Public Access
+In order to access the Magento setup externally, you must have completed the note in the [Magento Docker Setup](#magento-docker-setup). Additionally, as with anything public facing, there are some security implications with exposing ports to the internet; **it is recommended that you only keep the docker container and/or ports available when necessary.** 
+
+* Note: the following instructions are general. How they'll be implemented is going to vary based on your router and network setup.
+
+After editing the docker compose file with your host, you must forward some ports to your device from your router. This can typically be done from your router's control panel. Additionally, you will need to know your device's IP address.
+* On macOS, your router IP and device IP can be found by navigating to `System Preferences -> Network -> Wi-Fi -> Advanced... -> TCP/IP`. The numbers you're looking for are `IPv4 Address` and `Router`.
+
+You should be able to log into your router's control panel by navigating to the router's IP address in your browser. Once you've found and logged into your router's control panel, there should be a link somewhere (possibly under advanced settings) labeled "Port Forwarding" or "Application Forwarding."
+
+The ports that must be forwarded to the IP address of the device running the Magento containers are:
+* 80 TCP
+* 8080 TCP
+* 443 TCP/UDP
+
+After saving these settings to your router, your Magento installation should be accessible to the public internet. Check by navigating to your external IP address. This address is most easily found by googling "What is my IP." You should be presented with your Magento store front.
 
 # Troubleshooting
 
