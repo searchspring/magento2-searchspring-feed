@@ -1,6 +1,6 @@
 <?php
 /**
- * Module to fetch customer data.
+ * Module to fetch sales data.
  *
  * This file is part of SearchSpring/Feed.
  *
@@ -13,11 +13,11 @@ namespace SearchSpring\Feed\Controller\Feed;
 use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context as Context;
 use Magento\Framework\Controller\Result\JsonFactory as JsonFactory;
-use SearchSpring\Feed\Helper\Customer as Customer;
+use SearchSpring\Feed\Helper\Sale as Sale;
 use \Magento\Framework\App\Request\Http as RequestHttp;
 use SearchSpring\Feed\Helper\Utils;
 
-class Customers extends Action
+class Sales extends Action
 {
     protected $request;
     protected $helper;
@@ -26,7 +26,7 @@ class Customers extends Action
     public function __construct(
         RequestHttp $request,
         Context $context,
-        Customer $helper,
+        Sale $helper,
         JsonFactory $resultJsonFactory
     ) {
         parent::__construct($context);
@@ -36,10 +36,10 @@ class Customers extends Action
     }
 
     /**
-     * Execute customers action
+     * Execute sales action
      * 
      * Example query:
-     * http://localhost/searchspring/feed/customers?dateRange=2021-10-01,2021-11-01&rowRange=1,25
+     * http://localhost/searchspring/feed/sales?dateRange=2021-10-01,2021-11-01&rowRange=1,25
      */
     public function execute()
     {
@@ -66,9 +66,8 @@ class Customers extends Action
             $resultJson->setHttpResponseCode(400);
             return $resultJson->setData($response);
         }
-
-        $data = $this->helper->getCustomers(); 
-
+        
+        $data = $this->helper->getSales(); 
         return $resultJson->setData($data);
     }
 }
