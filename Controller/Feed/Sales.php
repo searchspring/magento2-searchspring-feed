@@ -14,18 +14,23 @@ use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context as Context;
 use Magento\Framework\Controller\Result\JsonFactory as JsonFactory;
 use SearchSpring\Feed\Helper\Sale as Sale;
+use \Magento\Framework\App\Request\Http as RequestHttp;
+use SearchSpring\Feed\Helper\Utils;
 
 class Sales extends Action
 {
+    protected $request;
     protected $helper;
     protected $resultJsonFactory;
 
     public function __construct(
+        RequestHttp $request,
         Context $context,
         Sale $helper,
         JsonFactory $resultJsonFactory
     ) {
         parent::__construct($context);
+        $this->request = $request;
         $this->helper = $helper;
         $this->resultJsonFactory = $resultJsonFactory;
     }
@@ -41,7 +46,7 @@ class Sales extends Action
         $resultJson = $this->resultJsonFactory->create();
 
         // Validate date range
-        $isValidDateRange = $this->helper->validateDateRange();
+        $isValidDateRange = Utils::validateDateRange($this->request->getParam('dateRange', 'All'));
         if (!$isValidDateRange){
             $response = [
                 'success' => false,
@@ -52,7 +57,7 @@ class Sales extends Action
         }
 
         // Validate row range
-        $isValidRowRange = $this->helper->validateRowRange();
+        $isValidRowRange = Utils::validateRowRange($this->request->getParam('rowRange', 'All'));
         if (!$isValidRowRange){
             $response = [
                 'success' => false,
