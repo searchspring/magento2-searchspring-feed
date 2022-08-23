@@ -37,14 +37,13 @@ class Sale extends \Magento\Framework\App\Helper\AbstractHelper
         $this->rowRange = $this->request->getParam('rowRange', 'All');
     }
 
-    // ##### ACTUAL SQL QUERY STUFF #####
     function getSales()
     {
         $result = [];
         $collection = $this->saleFactory->create();
         
+        // Build date range query.
         $dateRange = Utils::getDateRange($this->dateRange);
-
         if ($dateRange) {
             $filterDateRange = [
                 'from' => $dateRange[0],
@@ -58,7 +57,6 @@ class Sale extends \Magento\Framework\App\Helper\AbstractHelper
                 ->where("(main_table.created_at >= '" . $filterDateRange['from'] . "' && main_table.created_at <= '" . $filterDateRange['to'] . "') "
                     . " || (main_table.updated_at >= '" . $filterDateRange['from'] . "' && main_table.updated_at <= '" . $filterDateRange['to'] . "') ");
         }
-
 
         // Chunk sales with row range.
         $rowRange = Utils::getRowRange($this->rowRange);
@@ -91,8 +89,8 @@ class Sale extends \Magento\Framework\App\Helper\AbstractHelper
                 ];
             $result[] = $res;
         }
+        
         return ['sales' => $result];
-
     }
 
     /**
@@ -106,80 +104,6 @@ class Sale extends \Magento\Framework\App\Helper\AbstractHelper
         return $this->storesConfig->getStoresConfigByPath(\Magento\Config\Model\Config\Backend\Admin\Custom::XML_PATH_GENERAL_LOCALE_TIMEZONE);
     }
 
-    private function productTypeRules($callType, $orderItem, $storeIds = null)
-    {
-        $order = $orderItem->getOrder();
-        $skipRow = false;
-        $productId = $orderItem->getData('product_id');
-        if ($orderItem->getProduct())
-            $productTypeReal = $orderItem->getProduct()->getTypeID();
-        else {
-            $productTypeReal = $orderItem->getProductType();
-        }
-
-        switch ($productTypeReal) {
-            case \Magento\ConfigurableProduct\Model\Product\Type\Configurable::TYPE_CODE:
-                if ($callType == 'sales' || $callType == 'tracking')
-                    $skipRow = true;
-                break;
-            case \Magento\GroupedProduct\Model\Product\Type\Grouped::TYPE_CODE:
-                if (!$this->getConfig(self::XML_PATH_ADVANCED_GROUPPROD, is_null($storeIds) ? $storeIds : $storeIds[0]))
-                    $skipRow = true;
-                break;
-            case \Magento\Bundle\Model\Product\Type::TYPE_CODE:
-                if (!$this->getConfig(self::XML_PATH_ADVANCED_BUNDLEPROD, is_null($storeIds) ? $storeIds : $storeIds[0]))
-                    $skipRow = true;
-                break;
-            default:
-                if ($orderItem->getData('product_options')) {
-                    $productOptions = $orderItem->getData('product_options');
-
-                    $parentIdArray = $this->groupedProduct->getParentIdsByChild($productId);
-                    if (isset($parentIdArray[0])) {
-                        //if the Simple product is associated with a Grouped product (i.e. child).
-                        if ($this->getConfig(self::XML_PATH_ADVANCED_GROUPPROD, is_null($storeIds) ? $storeIds : $storeIds[0])) {
-                            if (isset($productOptions['info_buyRequest']['super_product_config']['product_id']))
-                                if ($productOptions['info_buyRequest']['super_product_config']['product_id'] != $productId)
-                                    $productId = $productOptions['info_buyRequest']['super_product_config']['product_id'];
-                        }
-                    }
-
-                    $parentIdArray = $this->getBundleParentIdsByChildFixed($productId);
-                    if (isset($parentIdArray[0])) {
-                        //if the Simple product is associated with a Bundle product (i.e. child).
-                        if ($this->getConfig(self::XML_PATH_ADVANCED_BUNDLEPROD, is_null($storeIds) ? $storeIds : $storeIds[0])) {
-                            if (isset($productOptions['info_buyRequest']['product']))
-                                if ($productOptions['info_buyRequest']['product'] != $productId)
-                                    $skipRow = true;
-                        }
-                    }
-                }
-
-            //Simple product is not associated with Configurable, Grouped, Bundle
-
-        }
-        if ($skipRow)
-            return false;
-        $qty = $orderItem->getData('qty_ordered') - ($orderItem->getData('qty_canceled') + $orderItem->getData('qty_refunded'));
-
-        if ($order->getData('status') == 'canceled')
-            $qty =0;
-
-        $sku = $this->productResource->getProductsSku(array($productId));
-        if (empty($sku))
-            $sku = $orderItem->getSku();
-        else
-            $sku = $sku[0]['sku'];
-
-            $res = array(
-            'product_id' => $productId,
-            'qty' => strval($qty),
-            'sku' => $sku
-        );
-
-        return $res;
-    }
-
     private function getConfig($key, $store = null)
     {
         return $this->scopeConfig->getValue(
@@ -188,6 +112,5 @@ class Sale extends \Magento\Framework\App\Helper\AbstractHelper
             $store
         );
     }
-
    }
 ?>

@@ -32,9 +32,6 @@ class Customer extends \Magento\Framework\App\Helper\AbstractHelper
         $this->rowRange = $this->request->getParam('rowRange', 'All');
     }
 
-    // ##### ACTUAL SQL QUERY STUFF #####
-    // Returns an array of arrays with the first sub array containing a header (['CustomerID', 'Email']).
-    // The rest of the array contains arrays containing a customerID and a customer Email.
     public function getCustomers()
     {
         $_result = [];
@@ -65,7 +62,6 @@ class Customer extends \Magento\Framework\App\Helper\AbstractHelper
         if (isset($rowRange[0]) && isset($rowRange[1])) 
             $customerCollection->getSelect()->limit((int)$rowRange[1], (int)$rowRange[0]);
 
-        // Items is an array of 'Items' which should be customers in this case.
         $items = $customerCollection->getItems(); // Make query
         foreach ($items as $item) {            
             $res = [
