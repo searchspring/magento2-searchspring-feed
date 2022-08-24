@@ -120,6 +120,14 @@ The ports that must be forwarded to the IP address of the device running the Mag
 
 After saving these settings to your router, your Magento installation should be accessible to the public internet. Check by navigating to your external IP address. This address is most easily found by googling "What is my IP." You should be presented with your Magento store front.
 
+An alternative quick and dirty approach is using Cloudfare's [cloudfared](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/tunnel-guide/local/#set-up-a-tunnel-locally-cli-setup) to create a unique publicly accessible url that will proxy all requests to localhost.
+```
+brew install cloudflare/cloudflare/cloudflared
+cloudflared tunnel --url http://localhost:3000
+```
+This generates a random subdomain on Cloudfare that points to localhost on port 3000. The url will appear in the terminal. 
+
+
 # Troubleshooting
 
 * Restarting the docker container is a relatively quick way to ensure your changes are live. This can be done through Docker Desktop or through VSCode. To restart through VSCode, navigate to `Remote Explorer` on the left side bar of the magento workspace, right click on the active magento container in `Dev Containers` and select `Stop Container`. This should open a series of three prompts: first stop the container, second reload the window, third start the container.
