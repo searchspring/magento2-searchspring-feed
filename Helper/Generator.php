@@ -832,5 +832,3 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper{
         // End custom CSV write
     }
 }
-
-?>

@@ -8,7 +8,7 @@ use \DateTime;
 // compare values to see if they're in the proper order or anything like that. It only checks
 // to see if there are dates, and if they're in the proper format..
 
-class Utils 
+class Utils
 {
     // Tries to parse date to the format, returns true if it can be converted.
     public static function validateDate($date, $format = 'Y-m-d')
@@ -50,10 +50,10 @@ class Utils
     // Row range enables chunking requests for getting sales on the Boost side.
     // Row Range expects two comma seperated integers greater than 0.
     // The first number minus one is the start index (zero-based) in the sale collection.
-    // The second number is the number of sales to chunk from the start index. 
+    // The second number is the number of sales to chunk from the start index.
     // For example, &dateRange=1,3 creates a chunk starting at sale element 0 and ending at
     // sale element 2. And, &dateRange=10,3 creates a chunk starting at sale element 9
-    // and ending at sale element 11. 
+    // and ending at sale element 11.
     public static function getRowRange($row_param){
         if ($row_param != 'All'){
             $result = explode(",", $row_param);
@@ -94,4 +94,3 @@ class Utils
         return $d->format($format);
     }
 }
-?>
