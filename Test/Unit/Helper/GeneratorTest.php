@@ -1,49 +1,47 @@
 <?php
+/**
+ * Copyright © GigaParts, Inc. All rights reserved.
+ */
+declare(strict_types = 1);
 
-use PHPUnit\Framework\TestCase;
+namespace Magento\PhpStan\SearchSpring\Feed\Test\Unit\Helper;
+
+use Magento\Catalog\Model\Product as Product;
+use PHPUnit\Framework\MockObject\MockObject as Mock;
 use SearchSpring\Feed\Helper\Generator;
-
-require_once __DIR__ . '/../../Helper/Generator.php';
-require_once __DIR__ . '/../../../../../../../vendor/autoload.php';
-
-//require_once __DIR__ . '/../../../../../../../vendor/magento/module-catalog/Model/Product.php';
-
+use PHPUnit\Framework\TestCase;
 
 class GeneratorTest extends TestCase
 {
-
-    public function testSetRecordValue()
+    public function testGenerate()
     {
-        $myRecord = array(
-            "foo" => ["bar"],
-            "bar" => ["foo"],
-        );
+        $myRecord = [
+            'foo' => ['bar'],
+            'bar' => ['foo'],
+        ];
 
-        $ignoredFields = array(
-            "one" => "two",
-            "three" => "four",
-        );
+        $ignoredFields = [
+            'one'   => 'two',
+            'three' => 'four',
+        ];
 
-        Generator::setRecordValue($myRecord,"foo","newValue",$ignoredFields);
+        Generator::setRecordValue($myRecord, 'foo', 'newValue', $ignoredFields);
 
-        $this->assertContains("newValue",$myRecord["foo"]);
-
-
+        $this->assertContains('newValue', $myRecord['foo']);
     }
 
     public function testAddPricesToRecord()
     {
         $product = $this->getProductMock();
 
-        $myRecord = array();
-        $ignoreField = array();
-        Generator::addPricesToRecord($product,$myRecord,$ignoreField,false);
+        $myRecord = [];
+        $ignoreField = [];
+        Generator::addPricesToRecord($product, $myRecord, $ignoreField, false);
 
 
-        $this->assertContains(10.0,$myRecord['final_price']);
-        $this->assertContains(20.0,$myRecord['max_price']);
-        $this->assertContains(15.0,$myRecord['regular_price']);
-
+        $this->assertContains(10.0, $myRecord['final_price']);
+        $this->assertContains(20.0, $myRecord['max_price']);
+        $this->assertContains(15.0, $myRecord['regular_price']);
     }
 
     public function testGetProductAttribute()
@@ -51,36 +49,34 @@ class GeneratorTest extends TestCase
         $product = $this->getProductMock();
         $attribute = $this->getAttributeMock();
 
-        $productAttribute = Generator::getProductAttribute($product,$attribute);
+        $productAttribute = Generator::getProductAttribute($product, $attribute);
 
-        $this->assertEquals("attribute data",$productAttribute);
+        $this->assertEquals("attribute data", $productAttribute);
     }
 
     public function testAddProductAttributesToRecord()
     {
         $product = $this->getProductMock();
-        $myRecord = array();
-        $ignoreField = array();
+        $myRecord = [];
+        $ignoreField = [];
 
-        Generator::addProductAttributesToRecord($product,$myRecord,$ignoreField);
+        Generator::addProductAttributesToRecord($product, $myRecord, $ignoreField);
 
-        $this->assertContains('attribute data',$myRecord['1']);
-
-
+        $this->assertContains('attribute data', $myRecord['1']);
     }
 
     /**
-     * @return \Magento\Catalog\Model\Product|\PHPUnit\Framework\MockObject\MockObject
+     * @return Product|Mock
      */
     public function getProductMock()
     {
         $product = $this
-            ->createMock(Magento\Catalog\Model\Product::class);
+            ->createMock(\Magento\Catalog\Model\Product::class);
         //Start Price Mock
         $price = $this
-            ->createMock(Magento\Framework\Pricing\PriceInfo\Base::class);
+            ->createMock(\Magento\Framework\Pricing\PriceInfo\Base::class);
         $priceCollection = $this
-            ->createMock(Magento\Catalog\Pricing\Price\FinalPrice::class);
+            ->createMock(\Magento\Catalog\Pricing\Price\FinalPrice::class);
         $minAmmountInterface = $this
             ->createMock(\Magento\Framework\Pricing\Amount\AmountInterface::class);
         $minAmmountInterface->method('getValue')
@@ -106,7 +102,7 @@ class GeneratorTest extends TestCase
         $product->method('getAttributeText')->willReturn("attribute text");
         $product->method('getData')->willReturn("attribute data");
 
-        $product->method('getAttributes')->willReturn(array($this->getAttributeMock()));
+        $product->method('getAttributes')->willReturn([$this->getAttributeMock()]);
 
         return $product;
     }
@@ -118,5 +114,4 @@ class GeneratorTest extends TestCase
         $attribute->method('usesSource')->willReturn(false);
         return $attribute;
     }
-
 }
