@@ -10,26 +10,39 @@
 
 namespace SearchSpring\Feed\Controller\Feed;
 
-use Magento\Framework\App\Action\Action;
-use Magento\Framework\App\Action\Context as Context;
+use Magento\Framework\App\Action\HttpGetActionInterface;
 use Magento\Framework\Controller\Result\JsonFactory as JsonFactory;
 use SearchSpring\Feed\Helper\Sale as Sale;
-use \Magento\Framework\App\Request\Http as RequestHttp;
+use \Magento\Framework\App\Request\Http as Request;
 use SearchSpring\Feed\Helper\Utils;
 
-class Sales extends Action
+class Sales implements HttpGetActionInterface
 {
+    /**
+     * @var Request
+     */
     protected $request;
+
+    /**
+     * @var Sale
+     */
     protected $helper;
+
+    /**
+     * @var JsonFactory
+     */
     protected $resultJsonFactory;
 
+    /**
+     * @param Request     $request
+     * @param Sale        $helper
+     * @param JsonFactory $resultJsonFactory
+     */
     public function __construct(
-        RequestHttp $request,
-        Context $context,
+        Request $request,
         Sale $helper,
         JsonFactory $resultJsonFactory
     ) {
-        parent::__construct($context);
         $this->request = $request;
         $this->helper = $helper;
         $this->resultJsonFactory = $resultJsonFactory;
@@ -37,7 +50,7 @@ class Sales extends Action
 
     /**
      * Execute sales action
-     * 
+     *
      * Example query:
      * http://localhost/searchspring/feed/sales?dateRange=2021-10-01,2021-11-01&rowRange=1,25
      */
@@ -47,7 +60,7 @@ class Sales extends Action
 
         // Validate date range
         $isValidDateRange = Utils::validateDateRange($this->request->getParam('dateRange', 'All'));
-        if (!$isValidDateRange){
+        if (!$isValidDateRange) {
             $response = [
                 'success' => false,
                 'message' => "Invalid date range"
@@ -58,7 +71,7 @@ class Sales extends Action
 
         // Validate row range
         $isValidRowRange = Utils::validateRowRange($this->request->getParam('rowRange', 'All'));
-        if (!$isValidRowRange){
+        if (!$isValidRowRange) {
             $response = [
                 'success' => false,
                 'message' => "Invalid row range"
@@ -66,9 +79,8 @@ class Sales extends Action
             $resultJson->setHttpResponseCode(400);
             return $resultJson->setData($response);
         }
-        
-        $data = $this->helper->getSales(); 
+
+        $data = $this->helper->getSales();
         return $resultJson->setData($data);
     }
 }
-?>
