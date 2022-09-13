@@ -14,7 +14,19 @@
         }
     ],
     "minimum-stability": "dev",
-    "require": {},
+    "require": {
+        "magento/framework": "*",
+        "magento/module-catalog": "*",
+        "magento/module-catalog-inventory": "*",
+        "magento/module-configurable-product": "*",
+        "magento/module-customer": "*",
+        "magento/module-eav": "*",
+        "magento/module-grouped-product": "*",
+        "magento/module-review": "*",
+        "magento/module-sales": "*",
+        "magento/module-store": "*",
+        "magento/module-swatches": "*"
+    },
     "require-dev": {
         "phpunit/phpunit": "9.2"
     },
