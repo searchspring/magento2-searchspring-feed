@@ -9,29 +9,26 @@
 
 namespace SearchSpring\Feed\Controller\Feed;
 
-use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
+use Magento\Framework\App\Action\HttpGetActionInterface;
 use Magento\Framework\Controller\ResultInterface;
 use SearchSpring\Feed\Helper\Generator;
 
-class Generate extends Action
+class Generate implements HttpGetActionInterface
 {
     /**
      * @var Generator
      */
-    private $generator;
+    protected $generator;
 
     /**
      * Constructor
      *
-     * @param Context   $context
      * @param Generator $generator
      */
     public function __construct(
-        Context $context,
         Generator $generator
     ) {
-        parent::__construct($context);
         $this->generator = $generator;
     }
 
@@ -42,6 +39,6 @@ class Generate extends Action
      */
     public function execute()
     {
-        $response = $this->generator->generate();
+        $this->generator->generate();
     }
 }
