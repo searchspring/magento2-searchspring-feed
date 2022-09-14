@@ -2,9 +2,7 @@
 /**
  * Module to generate a SearchSpring CSV Feed
  * Copyright (C) 2017  SearchSpring
- *
  * This file is part of SearchSpring/Feed.
- *
  * For the full copyright and license information, please view the LICENSE.txt
  * file that was distributed with this source code.
  */
@@ -18,13 +16,15 @@ use SearchSpring\Feed\Helper\Generator;
 
 class Generate extends Action
 {
-
-    protected $generator;
+    /**
+     * @var Generator
+     */
+    private $generator;
 
     /**
      * Constructor
      *
-     * @param Context $context
+     * @param Context   $context
      * @param Generator $generator
      */
     public function __construct(
@@ -42,9 +42,6 @@ class Generate extends Action
      */
     public function execute()
     {
-        $req = $this->getRequest();
         $response = $this->generator->generate();
     }
-
-
 }

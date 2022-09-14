@@ -37,7 +37,7 @@ class Customers extends Action
 
     /**
      * Execute customers action
-     * 
+     *
      * Example query:
      * http://localhost/searchspring/feed/customers?dateRange=2021-10-01,2021-11-01&rowRange=1,25
      */
@@ -67,9 +67,8 @@ class Customers extends Action
             return $resultJson->setData($response);
         }
 
-        $data = $this->helper->getCustomers(); 
+        $data = $this->helper->getCustomers();
 
         return $resultJson->setData($data);
     }
 }
-?>
