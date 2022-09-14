@@ -36,43 +36,42 @@ class Customer extends \Magento\Framework\App\Helper\AbstractHelper
     {
         $_result = [];
         $customerCollection = $this->customerFactory->create();
-        
+
         // Build date range query.
         $dateRange = Utils::getDateRange($this->dateRange);
         if ($dateRange) {
             $filterDateRange = ['from' => $dateRange[0]];
-            
+
             if (isset($dateRange[1])) {
                 $plusOneDay = Utils::plusOneDay($dateRange[1], $format = 'Y-m-d');
                 $filterDateRange['to'] = $plusOneDay;
             }
-            
+
             $whereCreatedAt = "e.created_at >= '" . $filterDateRange['from'] . "'";
             $whereUpdatedAt = "e.updated_at >= '" . $filterDateRange['from'] . "'";
             if (isset($filterDateRange['to'])) {
                 $whereCreatedAt .= " && e.created_at <= '" . $filterDateRange['to'] . "'";
                 $whereUpdatedAt .= " && e.updated_at <= '" . $filterDateRange['to'] . "'";
             }
-            
+
             $customerCollection->getSelect()->where("($whereCreatedAt) || ($whereUpdatedAt)"); // Query string
         }
 
         // Chunk customers with row range.
         $rowRange = Utils::getRowRange($this->rowRange);
-        if (isset($rowRange[0]) && isset($rowRange[1])) 
+        if (isset($rowRange[0]) && isset($rowRange[1]))
             $customerCollection->getSelect()->limit((int)$rowRange[1], (int)$rowRange[0]);
 
         $items = $customerCollection->getItems(); // Make query
-        foreach ($items as $item) {            
+        foreach ($items as $item) {
             $res = [
                 'id' => $item->getId(),
                 'email' => $item->getEmail()
             ];
-            
+
             $_result[] = $res;
         }
 
         return ['customers' => $_result];
     }
 }
-?>

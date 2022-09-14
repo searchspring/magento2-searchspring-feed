@@ -41,7 +41,7 @@ class Sale extends \Magento\Framework\App\Helper\AbstractHelper
     {
         $result = [];
         $collection = $this->saleFactory->create();
-        
+
         // Build date range query.
         $dateRange = Utils::getDateRange($this->dateRange);
         if ($dateRange) {
@@ -60,7 +60,7 @@ class Sale extends \Magento\Framework\App\Helper\AbstractHelper
 
         // Chunk sales with row range.
         $rowRange = Utils::getRowRange($this->rowRange);
-        if (isset($rowRange[0]) && isset($rowRange[1])) 
+        if (isset($rowRange[0]) && isset($rowRange[1]))
             $collection->getSelect()->limit((int)$rowRange[1], (int)$rowRange[0]);
 
         foreach($collection as $item){
@@ -89,7 +89,7 @@ class Sale extends \Magento\Framework\App\Helper\AbstractHelper
                 ];
             $result[] = $res;
         }
-        
+
         return ['sales' => $result];
     }
 
@@ -112,5 +112,4 @@ class Sale extends \Magento\Framework\App\Helper\AbstractHelper
             $store
         );
     }
-   }
-?>
+}
