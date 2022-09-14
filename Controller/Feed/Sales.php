@@ -37,7 +37,7 @@ class Sales extends Action
 
     /**
      * Execute sales action
-     * 
+     *
      * Example query:
      * http://localhost/searchspring/feed/sales?dateRange=2021-10-01,2021-11-01&rowRange=1,25
      */
@@ -66,9 +66,8 @@ class Sales extends Action
             $resultJson->setHttpResponseCode(400);
             return $resultJson->setData($response);
         }
-        
-        $data = $this->helper->getSales(); 
+
+        $data = $this->helper->getSales();
         return $resultJson->setData($data);
     }
 }
-?>
