@@ -28,7 +28,7 @@ class Sale extends \Magento\Framework\App\Helper\AbstractHelper
     public function __construct(
         RequestHttp $request,
         StoresConfig $storesConfig,
-        CollectionFactory $saleFactory,
+        CollectionFactory $saleFactory
     ) {
         $this->request = $request;
         $this->storesConfig = $storesConfig;
