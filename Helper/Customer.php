@@ -24,7 +24,7 @@ class Customer extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function __construct(
         RequestHttp $request,
-        CollectionFactory $customerFactory,
+        CollectionFactory $customerFactory
     ) {
         $this->request = $request;
         $this->customerFactory = $customerFactory;
