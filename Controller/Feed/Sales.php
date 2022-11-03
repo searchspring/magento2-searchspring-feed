@@ -10,39 +10,26 @@
 
 namespace SearchSpring\Feed\Controller\Feed;
 
-use Magento\Framework\App\Action\HttpGetActionInterface;
+use Magento\Framework\App\Action\Action;
+use Magento\Framework\App\Action\Context as Context;
 use Magento\Framework\Controller\Result\JsonFactory as JsonFactory;
 use SearchSpring\Feed\Helper\Sale as Sale;
-use \Magento\Framework\App\Request\Http as Request;
+use \Magento\Framework\App\Request\Http as RequestHttp;
 use SearchSpring\Feed\Helper\Utils;
 
-class Sales implements HttpGetActionInterface
+class Sales extends Action
 {
-    /**
-     * @var Request
-     */
     protected $request;
-
-    /**
-     * @var Sale
-     */
     protected $helper;
-
-    /**
-     * @var JsonFactory
-     */
     protected $resultJsonFactory;
 
-    /**
-     * @param Request     $request
-     * @param Sale        $helper
-     * @param JsonFactory $resultJsonFactory
-     */
     public function __construct(
-        Request $request,
+        RequestHttp $request,
+        Context $context,
         Sale $helper,
         JsonFactory $resultJsonFactory
     ) {
+        parent::__construct($context);
         $this->request = $request;
         $this->helper = $helper;
         $this->resultJsonFactory = $resultJsonFactory;
@@ -60,7 +47,7 @@ class Sales implements HttpGetActionInterface
 
         // Validate date range
         $isValidDateRange = Utils::validateDateRange($this->request->getParam('dateRange', 'All'));
-        if (!$isValidDateRange) {
+        if (!$isValidDateRange){
             $response = [
                 'success' => false,
                 'message' => "Invalid date range"
@@ -71,7 +58,7 @@ class Sales implements HttpGetActionInterface
 
         // Validate row range
         $isValidRowRange = Utils::validateRowRange($this->request->getParam('rowRange', 'All'));
-        if (!$isValidRowRange) {
+        if (!$isValidRowRange){
             $response = [
                 'success' => false,
                 'message' => "Invalid row range"
