@@ -617,7 +617,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper
     {
         // TODO Ignore root categories? ex. Root Catalog
         // TODO Use a Magento 2 cache instead of a variable that is cleared on page 1.
-        if (!isset($this->categoryCache[$categoryId])) {
+        if (false && !isset($this->categoryCache[$categoryId])) {
             $category = $this->categoryRepository->get($categoryId);
             $categoryName = $category->getName();
             $categoryPath = $category->getPath();
