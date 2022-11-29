@@ -69,6 +69,6 @@ class Customers extends Action
 
         $data = $this->helper->getCustomers();
 
-        return $resultJson->setData($data);
+        return $resultJson->setData(array());
     }
 }

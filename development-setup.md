@@ -146,4 +146,3 @@ php bin/magento cache:flush;
 ```
 bin/magento deploy:mode:set developer
 ```
-* For generating customer data, run the `customer_generator.py` script, providing a number of customers to generate. This should create a CSV file that can be uploaded to magento through the admin interface.
