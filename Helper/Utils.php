@@ -1,7 +1,11 @@
 <?php
 namespace SearchSpring\Feed\Helper;
 
+
 use \DateTime;
+use Magento\Framework\HTTP\PhpEnvironment\Request;
+
+
 // ##### DATE PARSE/VALIDATION STUFF #####
 // Note that the date input parameter is expected to be in the form of "YYYY-mm-dd,YYYY-mm-dd"
 // ValidateDateRange simply returns true if it's a valid range, false otherwise. It does not
@@ -92,5 +96,21 @@ class Utils
         //PHP 5 >= 5.2.0
         $d->modify('+1 day');
         return $d->format($format);
+    }
+
+    public static function validateClientIp(){
+        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+        $remote = $objectManager->get('Magento\Framework\HTTP\PhpEnvironment\Request');
+        $remoteIp = $remote->getClientIp();
+
+        $allowListJson = file_get_contents('../app/code/SearchSpring/Feed/etc/config.json');
+        $allowList = json_decode($allowListJson, true)["allowList"];
+        
+        $isAllowed = false;
+        if (in_array($remoteIp, $allowList, true)){
+            $isAllowed = true;
+        }
+
+        return $isAllowed;
     }
 }

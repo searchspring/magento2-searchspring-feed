@@ -67,6 +67,12 @@ class Sales extends Action
             return $resultJson->setData($response);
         }
 
+        // Validate client IP address
+        if (!Utils::validateClientIp()){
+            $resultJson->setHttpResponseCode(401);
+            return $resultJson->setData($response);
+        }
+        
         $data = $this->helper->getSales();
         return $resultJson->setData($data);
     }
