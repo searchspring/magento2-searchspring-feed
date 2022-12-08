@@ -67,8 +67,17 @@ class Customers extends Action
             return $resultJson->setData($response);
         }
 
-        $data = $this->helper->getCustomers();
+        // Validate client IP address
+        if (!Utils::validateClientIp()){
+            $response = [
+                'success' => false,
+                'message' => "Unauthorized"
+            ];
+            $resultJson->setHttpResponseCode(401);
+            return $resultJson->setData($response);
+        }
 
+        $data = $this->helper->getCustomers();
         return $resultJson->setData(array());
     }
 }
