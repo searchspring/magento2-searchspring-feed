@@ -12,7 +12,7 @@ namespace SearchSpring\Feed\Helper;
 use Magento\Catalog\Model\Product;
 
 use \Magento\Framework\App\Request\Http as RequestHttp;
-use \Magento\Framework\Controller\Result as Result;
+use \Magento\Framework\App\Response\Http as ResponseHttp;
 use Magento\Framework\Phrase;
 use \Magento\Framework\View\Config as ViewConfig;
 use \Magento\Catalog\Api\ProductRepositoryInterface as ProductRepositoryInterface;
@@ -44,7 +44,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper
     protected $fields = [];
 
     protected $request;
-    protected $rawResultFactory;
+    protected $response;
 
     protected $productCollectionFactory;
     protected $productOptionFactory;
@@ -105,7 +105,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function __construct(
         RequestHttp $request,
-        Result $rawResultFactory,
+        ResponseHttp $response,
         ProductVisibility $productVisibility,
         ProductOptionFactory $productOptionFactory,
         ProductCollectionFactory $productCollectionFactory,
@@ -126,7 +126,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper
         ViewConfig $viewConfig
     ) {
         $this->request = $request;
-        $this->rawResultFactory = $rawResultFactory;
+        $this->response = $response;
         $this->productCollectionFactory = $productCollectionFactory;
         $this->productOptionFactory = $productOptionFactory;
         $this->productRepository = $productRepository;
@@ -270,23 +270,18 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper
             $this->writeRecord($productRecord);
         }
 
-        $result = $this->rawResultFactory->create();
-        $result->setHeader('Content-Type', 'text/xml');
-
         // Check if we're on last page
         if ($collection->getSize() <= $this->page * $this->count) {
             // If on last page write feed file and send complete
             $this->moveFeed();
-            $result->setContents('Complete');
+            $this->response->setBody('Complete');
         } else {
             // Else let regenerator know to request next page
-            $result->setContents('Continue|' . ($this->page + 1));
+            $this->response->setBody('Continue|' . ($this->page + 1));
         }
-        $result->setHttpResponseCode(200);
+        $this->response->setHttpResponseCode(200);
 
         fclose($this->tmpFile);
-
-        return $result;
     }
 
     /**
