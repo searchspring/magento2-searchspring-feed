@@ -68,12 +68,13 @@ class Sales extends Action
         }
 
         // Validate client IP address
-        if (!Utils::validateClientIp()){
+        $isValidClient = Utils::validateClientIp();
+        if (!$isValidClient){
             $response = [
                 'success' => false,
                 'message' => "Unauthorized"
             ];
-            $resultJson->setHttpResponseCode(401);
+            $resultJson->setHttpResponseCode(403);
             return $resultJson->setData($response);
         }
         

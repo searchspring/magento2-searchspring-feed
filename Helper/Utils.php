@@ -102,9 +102,6 @@ class Utils
         $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
         $remote = $objectManager->get('Magento\Framework\HTTP\PhpEnvironment\Request');
         $remoteIp = $remote->getClientIp();
-        print_r($remote);
-
-        // echo($remoteIp . "\n");
 
         $allowListJson = file_get_contents('../app/code/SearchSpring/Feed/etc/config.json');
         $allowList = json_decode($allowListJson, true)["allowList"];
