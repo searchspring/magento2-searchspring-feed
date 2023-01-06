@@ -290,7 +290,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
             $this->productRecord = array();
             $this->addProductAttributesToRecord($product);
             $this->addChildAttributesToRecord($product);
-            $this->addOptionsToRecord($product);
+//             $this->addOptionsToRecord($product);
             $this->addImagesToRecord($product);
             $this->addStockInfoToRecord($product);
             $this->addCategoriesToRecord($product);
@@ -775,13 +775,13 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper {
         }
 
 
-        $options = $this->productOptionFactory->create()
-            ->getCollection()
-            ->addTitleToResult($this->storeId);
+//         $options = $this->productOptionFactory->create()
+//             ->getCollection()
+//             ->addTitleToResult($this->storeId);
 
-        foreach($options as $option) {
-            $this->fields[] = 'option_' . $this->textToFieldName($option->getTitle());
-        }
+//         foreach($options as $option) {
+//             $this->fields[] = 'option_' . $this->textToFieldName($option->getTitle());
+//         }
 
         // Remove ignored fields
         $this->fields = array_unique(array_diff($this->fields, $this->ignoreFields));
