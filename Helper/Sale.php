@@ -75,27 +75,19 @@ class Sale extends \Magento\Framework\App\Helper\AbstractHelper
             $productID = $item->getData('product_id');
             $quantity = (string)($item->getData('qty_ordered') - ($item->getData('qty_canceled') + $item->getData('qty_refunded')));
             
-            // TESTY BITS //
-            //These both should return the same data.
-            // but this one has returned "" in the wild
+            // This has returned "" in the wild
             $storeId = $item->getData('store_id');
-            // and no idea if this one is any different.
-            $id = $order->getStoreId();
-            
-            // $storeId = "";
-            
+
             $createdAt = null;
-            // if(!empty($storeId)){
-                $zones = $this->getTimezone(array($storeId));
+            if(!empty($storeId)){
+                $zones = $this->getTimezone();
                 $zone = $zones[$storeId];
                 $dt = new \DateTime($item->getData('created_at'), new \DateTimeZone($zone));
                 $createdAt = $dt->format('Y-m-d H:i:sP');
-                echo($createdAt . "\n");
-            // } else {
+            } else {
                 $dt = new \DateTime($item->getData('created_at'));
                 $createdAt = $dt->format('Y-m-d H:i:sP');
-                echo($createdAt . "\n");
-            // }
+            }
 
             $res = ['order_id' => $orderID,
                     'customer_id' => $customerID,
@@ -111,10 +103,9 @@ class Sale extends \Magento\Framework\App\Helper\AbstractHelper
     /**
      * Get locale timezone
      *
-     * @param array $storeIds
      * @return array
      */
-    private function getTimezone($storeIds)
+    private function getTimezone()
     {
         return $this->storesConfig->getStoresConfigByPath(\Magento\Config\Model\Config\Backend\Admin\Custom::XML_PATH_GENERAL_LOCALE_TIMEZONE);
     }
