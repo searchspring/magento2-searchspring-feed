@@ -80,7 +80,7 @@ class Sale extends \Magento\Framework\App\Helper\AbstractHelper
 
             $createdAt = null;
             if(!empty($storeId)){
-                $zones = $this->getTimezone();
+                $zones = $this->getTimeZones();
                 $zone = $zones[$storeId];
                 $dt = new \DateTime($item->getData('created_at'), new \DateTimeZone($zone));
                 $createdAt = $dt->format('Y-m-d H:i:sP');
@@ -101,11 +101,11 @@ class Sale extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     /**
-     * Get locale timezone
+     * Get timezones used by the stores in this Magento setup.
      *
      * @return array
      */
-    private function getTimezone()
+    private function getTimeZones()
     {
         return $this->storesConfig->getStoresConfigByPath(\Magento\Config\Model\Config\Backend\Admin\Custom::XML_PATH_GENERAL_LOCALE_TIMEZONE);
     }
