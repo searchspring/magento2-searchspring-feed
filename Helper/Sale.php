@@ -78,16 +78,15 @@ class Sale extends \Magento\Framework\App\Helper\AbstractHelper
             // This has returned "" in the wild
             $storeId = $item->getData('store_id');
 
-            $createdAt = null;
-            if(!empty($storeId)){
+            // Normal storeIds start at "1", but the sneaky admin store is "0".
+            if($storeId == "0" || !empty($storeId)){
                 $zones = $this->getTimeZones();
                 $zone = $zones[$storeId];
                 $dt = new \DateTime($item->getData('created_at'), new \DateTimeZone($zone));
-                $createdAt = $dt->format('Y-m-d H:i:sP');
             } else {
                 $dt = new \DateTime($item->getData('created_at'));
-                $createdAt = $dt->format('Y-m-d H:i:sP');
             }
+            $createdAt = $dt->format('Y-m-d H:i:sP');
 
             $res = ['order_id' => $orderID,
                     'customer_id' => $customerID,
