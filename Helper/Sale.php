@@ -74,11 +74,18 @@ class Sale extends \Magento\Framework\App\Helper\AbstractHelper
 
             $productID = $item->getData('product_id');
             $quantity = (string)($item->getData('qty_ordered') - ($item->getData('qty_canceled') + $item->getData('qty_refunded')));
-
+            
+            // This has returned "" in the wild
             $storeId = $item->getData('store_id');
-            $zones = $this->getTimezone(array($storeId));
-            $zone = $zones[$storeId];
-            $dt = new \DateTime($item->getData('created_at'), new \DateTimeZone($zone));
+
+            // Normal storeIds start at "1", but the sneaky admin store is "0".
+            if($storeId == "0" || !empty($storeId)){
+                $zones = $this->getTimeZones();
+                $zone = $zones[$storeId];
+                $dt = new \DateTime($item->getData('created_at'), new \DateTimeZone($zone));
+            } else {
+                $dt = new \DateTime($item->getData('created_at'));
+            }
             $createdAt = $dt->format('Y-m-d H:i:sP');
 
             $res = ['order_id' => $orderID,
@@ -89,17 +96,15 @@ class Sale extends \Magento\Framework\App\Helper\AbstractHelper
                 ];
             $result[] = $res;
         }
-
         return ['sales' => $result];
     }
 
     /**
-     * Get locale timezone
+     * Get timezones used by the stores in this Magento setup.
      *
-     * @param array $storeIds
      * @return array
      */
-    private function getTimezone($storeIds)
+    private function getTimeZones()
     {
         return $this->storesConfig->getStoresConfigByPath(\Magento\Config\Model\Config\Backend\Admin\Custom::XML_PATH_GENERAL_LOCALE_TIMEZONE);
     }
