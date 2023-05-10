@@ -23,7 +23,7 @@ Hit this endpoint:
 You can also add in count={number} if you really want to slim it down
 
 Once you've hit that endpoint you can go to
-* https://www.YOURDOMAIN.com/media/searchspring/searchspring-{domainName}-{tempName}.tmp.cvs
+* https://www.YOURDOMAIN.com/media/searchspring/searchspring-{domainName}-{tempName}.tmp.csv
 
 This will download the temp file that has been added to by the generate call.
 
