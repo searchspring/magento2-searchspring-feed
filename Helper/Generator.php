@@ -894,7 +894,7 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper
 
         $output = [];
         foreach ($row as $field) {
-            $output[] = preg_match("/(?:${delimiter_esc}|${enclosure_esc}|\s)/", $field) ? (
+            $output[] = preg_match("/(?:{$delimiter_esc}|{$enclosure_esc}|\s)/", $field) ? (
                 $enclosure . str_replace($enclosure, $enclosure . $enclosure, $field) . $enclosure
             ) : $field;
         }
