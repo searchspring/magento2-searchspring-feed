@@ -49,6 +49,11 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper
     protected $productCollectionFactory;
     protected $productOptionFactory;
     protected $productVisibility;
+    protected $productRepository;
+    protected $ratingFactory;
+    protected $eavConfig;
+    protected $viewConfig;
+    protected $productEntityTypeId;
     protected $productImageHelper;
     protected $categoryRepository;
     protected $attributeFactory;
