@@ -552,7 +552,10 @@ class Generator extends \Magento\Framework\App\Helper\AbstractHelper
 
     protected function addCategoriesToRecord($product, &$productRecord)
     {
-        $categoryIds = $product->getCategoryIds();
+        $categoryIds = $product->getCategoryCollection()
+            ->addAttributeToFilter('is_active', 1)
+            ->setOrder('path')
+            ->getColumnValues('entity_id');
 
         $categoryNames = [];
         $categoryHierarchy = [];
